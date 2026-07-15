@@ -1,23 +1,41 @@
 {
   "expo": {
-    "name": "alloartisan-app",
-    "slug": "alloartisan-app",
+    "name": "AlloArtisan",
+    "slug": "alloartisan",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "alloartisanapp",
-    "userInterfaceStyle": "automatic",
+    "scheme": "alloartisan",
+    "userInterfaceStyle": "light",
+    "primaryColor": "#1E3A8A",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/images/icon.png",
+      "supportsTablet": false,
+      "bundleIdentifier": "bj.alloartisan.app"
     },
     "android": {
+      "package": "bj.alloartisan.app",
+      "googleServicesFile": "./google-services.json",
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#1E3A8A",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": true,
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.CAMERA",
+        "android.permission.POST_NOTIFICATIONS"
+      ]
     },
     "web": {
       "output": "static",
@@ -28,15 +46,48 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#1E3A8A",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 140
+        }
+      ],
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "AlloArtisan utilise votre position pour trouver les artisans proches de vous et suivre les interventions en temps réel."
+        }
+      ],
+      "expo-audio",
+      "expo-video",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "AlloArtisan utilise la caméra pour filmer et photographier les pannes à montrer aux artisans.",
+          "microphonePermission": "AlloArtisan utilise le micro pour les messages vocaux et le son des vidéos.",
+          "recordAudioAndroid": true
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      "expo-localization",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-monochrome.png",
+          "color": "#1E3A8A"
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "dfb30409-55a5-4329-9121-36451b1352dd"
+      }
+    },
+    "owner": "richard-salanon"
   }
 }
