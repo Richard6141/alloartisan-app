@@ -42,6 +42,8 @@ example
 /ios
 /android
 
-# Config Firebase client + env local — non versionnés
-google-services.json
+# Env local — non versionné (secrets)
 .env
+# google-services.json : NON gitignoré exprès pour qu'EAS l'inclue au build.
+# Ce n'est pas un secret (identifiants publics embarqués dans l'APK), mais on
+# ne le committe pas non plus → ne PAS faire `git add google-services.json`.

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     View,
     Text,
@@ -13,8 +13,9 @@ import {
 import { useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, LocateFixed, BadgeCheck } from 'lucide-react-native';
+import { ArrowLeft, LocateFixed, BadgeCheck, Plus } from 'lucide-react-native';
 import { LiveMap } from '../components/LiveMap';
+import { SuggestMetierSheet } from '../components/SuggestMetierSheet';
 import { api, ApiError } from '../lib/api';
 import { resolvePosition } from '../lib/geo';
 import { queryKeys } from '../lib/queryClient';
@@ -44,6 +45,26 @@ export default function ArtisanOnboardingScreen() {
 
     const [metierId, setMetierId] = useState<string | null>(null);
     const [secondaires, setSecondaires] = useState<string[]>([]);
+    const [suggestOpen, setSuggestOpen] = useState(false);
+
+    // Catégories proposées dans la feuille de suggestion (dérivées des métiers)
+    const categories = useMemo(() => {
+        const map = new Map<string, { id: string; nom: string }>();
+        (metiers ?? []).forEach((m) => {
+            if (m.categorie) map.set(m.categorie.id, { id: m.categorie.id, nom: m.categorie.nom });
+        });
+        return Array.from(map.values());
+    }, [metiers]);
+
+    // Métier suggéré par l'artisan : l'ajouter à la liste et le sélectionner
+    const handleMetierCreated = (m: Metier) => {
+        queryClient.setQueryData<Metier[]>(queryKeys.metiers, (prev) => {
+            const list = prev ?? [];
+            return list.some((x) => x.id === m.id) ? list : [...list, m];
+        });
+        setMetierId(m.id);
+        setSecondaires((prev) => prev.filter((id) => id !== m.id));
+    };
     const [nomEntreprise, setNomEntreprise] = useState('');
     const [ville, setVille] = useState('');
     const [villeAuto, setVilleAuto] = useState(false);
@@ -197,6 +218,16 @@ export default function ArtisanOnboardingScreen() {
                                     </Pressable>
                                 );
                             })}
+                            {/* Filet de sécurité : liste non exhaustive */}
+                            <Pressable
+                                onPress={() => setSuggestOpen(true)}
+                                accessibilityRole="button"
+                                accessibilityLabel="Mon métier n'est pas dans la liste"
+                                style={styles.suggestChip}
+                            >
+                                <Plus size={14} color={colors.primary} strokeWidth={2.4} />
+                                <Text style={styles.suggestChipText}>Mon métier n'est pas listé</Text>
+                            </Pressable>
                         </View>
                     </View>
 
@@ -362,6 +393,13 @@ export default function ArtisanOnboardingScreen() {
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
+
+            <SuggestMetierSheet
+                visible={suggestOpen}
+                onClose={() => setSuggestOpen(false)}
+                categories={categories}
+                onCreated={handleMetierCreated}
+            />
         </SafeAreaView>
     );
 }
@@ -440,6 +478,23 @@ const styles = StyleSheet.create({
         fontFamily: typography.bodyMedium,
         fontSize: fontSizes.xs,
         color: colors.textSecondary,
+    },
+    suggestChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        paddingHorizontal: spacing.md,
+        height: 36,
+        borderRadius: radii.full,
+        backgroundColor: colors.primarySoft,
+        borderWidth: 1,
+        borderColor: colors.primary,
+        borderStyle: 'dashed',
+    },
+    suggestChipText: {
+        fontFamily: typography.bodySemiBold,
+        fontSize: fontSizes.xs,
+        color: colors.primary,
     },
     locateButton: {
         flexDirection: 'row',

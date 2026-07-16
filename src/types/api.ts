@@ -60,6 +60,8 @@ export interface Metier {
     slug: string;
     categorieId: string;
     populaire: boolean;
+    // Renvoyée par l'API (jointure catégorie) ; sert à grouper/suggérer un métier.
+    categorie?: { id: string; nom: string; slug: string };
 }
 
 export interface ArtisanSummary {
@@ -75,6 +77,8 @@ export interface ArtisanSummary {
     verified: boolean;
     accepteUrgences: boolean;
     abonnementType: AbonnementType;
+    /** Badge Ambassadeur (programme de parrainage) */
+    ambassadeurNiveau?: 'BRONZE' | 'ARGENT' | 'OR' | null;
     distanceKm?: number | null;
     /** Position (légèrement floutée) : uniquement sur /geolocation/artisans/nearby, pour la carte */
     latitude?: number | null;

@@ -1,13 +1,5 @@
 import React, { useState } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    Pressable,
-    ActivityIndicator,
-    Alert,
-    ScrollView,
-} from 'react-native';
+import { View, Text, StyleSheet, Pressable, Alert, ScrollView } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -20,13 +12,15 @@ import {
     Users,
     Star,
 } from 'lucide-react-native';
-import { EmptyState, Button } from '../components/ui';
+import { EmptyState, Button, Spinner } from '../components/ui';
 import {
     useMesAnnonces,
     useCandidats,
     useCloturerAnnonce,
 } from '../features/travailleurs/annonces-hooks';
 import { useStartTravailChat } from '../features/travailleurs/hooks';
+import { useAuth } from '../stores/auth';
+import { LoginInvite } from '../components/LoginInvite';
 import { ApiError } from '../lib/api';
 import type { AnnonceChantier, CandidatInteret } from '../types/api';
 import { colors, palette, spacing, typography, fontSizes, radii } from '../theme/tokens';
@@ -77,7 +71,7 @@ function CandidatRow({ candidat }: { candidat: CandidatInteret }) {
             </View>
             <Pressable style={styles.chatBtn} onPress={discuter} hitSlop={8}>
                 {startChat.isPending ? (
-                    <ActivityIndicator size="small" color={palette.white} />
+                    <Spinner size={18} color={palette.white} />
                 ) : (
                     <MessageCircle size={18} color={palette.white} strokeWidth={2} />
                 )}
@@ -141,7 +135,7 @@ function AnnonceRow({ annonce }: { annonce: AnnonceChantier }) {
             {open && (
                 <View style={styles.candidatsList}>
                     {isLoading ? (
-                        <ActivityIndicator color={colors.primary} style={{ paddingVertical: spacing.md }} />
+                        <Spinner color={colors.primary} size={26} style={{ paddingVertical: spacing.md }} />
                     ) : !candidats || candidats.length === 0 ? (
                         <Text style={styles.emptyCandidats}>
                             Personne ne s’est encore manifesté.
@@ -168,7 +162,8 @@ function AnnonceRow({ annonce }: { annonce: AnnonceChantier }) {
 
 export default function MesAnnoncesScreen() {
     const router = useRouter();
-    const { data, isLoading } = useMesAnnonces();
+    const isAuth = useAuth((s) => s.status === 'authenticated');
+    const { data, isLoading } = useMesAnnonces(isAuth);
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -187,9 +182,14 @@ export default function MesAnnoncesScreen() {
                 </Pressable>
             </View>
 
-            {isLoading ? (
+            {!isAuth ? (
+                <LoginInvite
+                    title="Mes annonces"
+                    message="Connectez-vous pour gérer vos annonces de chantier et voir les candidats."
+                />
+            ) : isLoading ? (
                 <View style={styles.loader}>
-                    <ActivityIndicator color={colors.primary} />
+                    <Spinner color={colors.primary} size={30} />
                 </View>
             ) : !data || data.length === 0 ? (
                 <EmptyState

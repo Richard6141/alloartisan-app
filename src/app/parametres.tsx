@@ -20,6 +20,7 @@ import {
     User as UserIcon,
     MapPin,
     Fingerprint,
+    Trash2,
 } from 'lucide-react-native';
 import { api, ApiError } from '../lib/api';
 import { prefsStorage } from '../lib/storage';
@@ -206,8 +207,99 @@ function SettingsForm() {
                 <Text style={styles.emailNote}>
                     Connecté avec {user?.email}. L'adresse email ne peut pas être modifiée.
                 </Text>
+
+                <DangerZone />
             </ScrollView>
         </KeyboardAvoidingView>
+    );
+}
+
+/** Zone dangereuse : suppression définitive du compte (mot de passe requis). */
+function DangerZone() {
+    const router = useRouter();
+    const deleteAccount = useAuth((s) => s.deleteAccount);
+    const [open, setOpen] = useState(false);
+    const [password, setPassword] = useState('');
+
+    const del = useMutation({
+        mutationFn: () => deleteAccount(password),
+        onSuccess: () => {
+            Alert.alert('Compte supprimé', 'Votre compte a été supprimé. À bientôt.');
+            router.replace('/(tabs)');
+        },
+        onError: (e) =>
+            Alert.alert(
+                'Suppression impossible',
+                e instanceof ApiError ? e.message : 'Mot de passe incorrect ou erreur réseau.',
+            ),
+    });
+
+    const confirm = () => {
+        if (!password) {
+            Alert.alert('Mot de passe requis', 'Saisissez votre mot de passe pour confirmer.');
+            return;
+        }
+        Alert.alert(
+            'Supprimer définitivement ?',
+            'Cette action est irréversible. Vos données seront supprimées et vous serez déconnecté.',
+            [
+                { text: 'Annuler', style: 'cancel' },
+                {
+                    text: 'Supprimer',
+                    style: 'destructive',
+                    onPress: () => del.mutate(),
+                },
+            ],
+        );
+    };
+
+    return (
+        <View style={styles.dangerZone}>
+            <Text style={styles.dangerLabel}>Zone dangereuse</Text>
+            {!open ? (
+                <Pressable
+                    style={styles.dangerRow}
+                    onPress={() => setOpen(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Supprimer mon compte"
+                >
+                    <Trash2 size={18} color={colors.danger} strokeWidth={2} />
+                    <Text style={styles.dangerRowTxt}>Supprimer mon compte</Text>
+                </Pressable>
+            ) : (
+                <View style={styles.dangerBox}>
+                    <Text style={styles.dangerHint}>
+                        La suppression est définitive. Confirmez avec votre mot de passe.
+                    </Text>
+                    <Input
+                        label="Mot de passe"
+                        placeholder="Votre mot de passe"
+                        value={password}
+                        onChangeText={setPassword}
+                        secureTextEntry
+                        autoCapitalize="none"
+                    />
+                    <View style={styles.dangerActions}>
+                        <Button
+                            title="Annuler"
+                            variant="secondary"
+                            onPress={() => {
+                                setOpen(false);
+                                setPassword('');
+                            }}
+                            style={{ flex: 1 }}
+                        />
+                        <Button
+                            title="Supprimer"
+                            variant="danger"
+                            loading={del.isPending}
+                            onPress={confirm}
+                            style={{ flex: 1 }}
+                        />
+                    </View>
+                </View>
+            )}
+        </View>
     );
 }
 
@@ -360,5 +452,43 @@ const styles = StyleSheet.create({
         fontFamily: typography.body,
         fontSize: fontSizes.xs,
         color: colors.textSecondary,
+    },
+    dangerZone: {
+        marginTop: spacing.xl,
+        paddingTop: spacing.lg,
+        borderTopWidth: 1,
+        borderTopColor: colors.border,
+        gap: spacing.sm,
+    },
+    dangerLabel: {
+        fontFamily: typography.heading,
+        fontSize: fontSizes.base,
+        color: colors.danger,
+    },
+    dangerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+        paddingVertical: spacing.md,
+        paddingHorizontal: spacing.lg,
+        borderRadius: radii.lg,
+        borderWidth: 1,
+        borderColor: colors.dangerSoft,
+        backgroundColor: colors.dangerSoft,
+    },
+    dangerRowTxt: {
+        fontFamily: typography.bodySemiBold,
+        fontSize: fontSizes.sm,
+        color: colors.danger,
+    },
+    dangerBox: { gap: spacing.md },
+    dangerHint: {
+        fontFamily: typography.body,
+        fontSize: fontSizes.sm,
+        color: colors.textSecondary,
+    },
+    dangerActions: {
+        flexDirection: 'row',
+        gap: spacing.md,
     },
 });

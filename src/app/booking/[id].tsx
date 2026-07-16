@@ -10,6 +10,7 @@ import {
     Navigation,
     CheckCircle2,
     Handshake,
+    AlertCircle,
 } from 'lucide-react-native';
 import {
     useBooking,
@@ -86,7 +87,7 @@ const ARTISAN_DESCRIPTIONS: Partial<Record<StatutBooking, string>> = {
     PRIX_PROPOSE: 'Devis envoyé. En attente de la réponse du client.',
     CONTRE_OFFRE: 'Le client négocie. Discutez-en dans la messagerie.',
     CONFIRMEE:
-        'Rendez-vous confirmé ! Le jour J, activez « Je pars » pour que le client vous suive.',
+        'Rendez-vous confirmé ! Activez « Je pars » pour que le client vous suive — ou marquez directement l’intervention terminée si c’est déjà fait.',
     EN_COURS: "Intervention en cours. Pensez à la clôturer une fois le travail terminé.",
     TERMINEE: 'Mission terminée. Le client peut maintenant vous noter.',
 };
@@ -94,7 +95,7 @@ const ARTISAN_DESCRIPTIONS: Partial<Record<StatutBooking, string>> = {
 export default function BookingDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
-    const { data: booking, isLoading } = useBooking(id);
+    const { data: booking, isLoading, isError, refetch, isFetching } = useBooking(id);
     const { confirm, cancel } = useBookingAction(id);
     const startConversation = useStartConversation();
     const isArtisan = useAuth((s) => s.user?.role === 'ARTISAN');
@@ -184,11 +185,28 @@ export default function BookingDetailScreen() {
                 <View style={{ width: 40 }} />
             </View>
 
-            {isLoading || !booking ? (
+            {isLoading ? (
                 <View style={{ padding: spacing.xl, gap: spacing.lg }}>
                     <Skeleton height={110} borderRadius={radii.lg} />
                     <Skeleton height={70} borderRadius={radii.lg} />
                     <Skeleton height={160} borderRadius={radii.lg} />
+                </View>
+            ) : !booking ? (
+                <View style={styles.errorBox}>
+                    <AlertCircle size={44} color={colors.textMuted} strokeWidth={1.6} />
+                    <Text style={styles.errorTitle}>Impossible d'afficher la mission</Text>
+                    <Text style={styles.errorText}>
+                        {isError
+                            ? 'La connexion a échoué. Vérifiez votre réseau puis réessayez.'
+                            : 'Cette mission est introuvable ou vous n’y avez plus accès.'}
+                    </Text>
+                    <Button
+                        title="Réessayer"
+                        variant="secondary"
+                        loading={isFetching}
+                        onPress={() => void refetch()}
+                        style={{ marginTop: spacing.sm }}
+                    />
                 </View>
             ) : (
                 <ScrollView
@@ -427,25 +445,30 @@ function ArtisanActionPanel({ booking }: { booking: Booking }) {
     const showError = (e: unknown) =>
         Alert.alert('Erreur', e instanceof ApiError ? e.message : 'Réessayez.');
 
-    const startIntervention = () => {
-        Alert.alert("Démarrer l'intervention", 'Vous êtes sur place et commencez le travail ?', [
-            { text: 'Pas encore', style: 'cancel' },
-            {
-                text: 'Oui, je commence',
-                onPress: () => start.mutate(undefined, { onError: showError }),
-            },
-        ]);
-    };
-
-    const completeIntervention = () => {
+    // Raccourci « terminer » : marche AUSSI depuis CONFIRMEE (on enchaîne le
+    // démarrage puis la fin) → l'artisan qui a oublié « Je pars » n'est pas
+    // bloqué et peut clôturer directement pour recevoir l'avis du client.
+    const finishing = start.isPending || complete.isPending;
+    const terminer = () => {
         Alert.alert(
             "Terminer l'intervention",
-            'Le travail est terminé ? Le client pourra alors vous noter.',
+            booking.statut === 'CONFIRMEE'
+                ? 'Le travail est terminé ? Pas besoin d’avoir cliqué « Je pars ». Le client pourra ensuite vous noter.'
+                : 'Le travail est terminé ? Le client pourra alors vous noter.',
             [
                 { text: 'Pas encore', style: 'cancel' },
                 {
                     text: 'Oui, terminé',
-                    onPress: () => complete.mutate(undefined, { onError: showError }),
+                    onPress: async () => {
+                        try {
+                            if (booking.statut === 'CONFIRMEE') {
+                                await start.mutateAsync();
+                            }
+                            await complete.mutateAsync();
+                        } catch (e) {
+                            showError(e);
+                        }
+                    },
                 },
             ],
         );
@@ -466,7 +489,7 @@ function ArtisanActionPanel({ booking }: { booking: Booking }) {
             {booking.statut === 'CONFIRMEE' && (
                 <>
                     <Button
-                        title="🛵 Je pars (suivi en direct)"
+                        title="🛵 Je pars (le client me suit)"
                         size="lg"
                         fullWidth
                         onPress={() =>
@@ -477,12 +500,16 @@ function ArtisanActionPanel({ booking }: { booking: Booking }) {
                         }
                     />
                     <Button
-                        title="Démarrer l'intervention"
+                        title="✅ Marquer l'intervention terminée"
                         variant="secondary"
                         fullWidth
-                        loading={start.isPending}
-                        onPress={startIntervention}
+                        loading={finishing}
+                        onPress={terminer}
                     />
+                    <Text style={styles.shortcutHint}>
+                        Déjà intervenu ? Marquez directement « terminée » pour recevoir l'avis du
+                        client.
+                    </Text>
                 </>
             )}
 
@@ -492,8 +519,8 @@ function ArtisanActionPanel({ booking }: { booking: Booking }) {
                     variant="accent"
                     size="lg"
                     fullWidth
-                    loading={complete.isPending}
-                    onPress={completeIntervention}
+                    loading={finishing}
+                    onPress={terminer}
                 />
             )}
         </>
@@ -511,6 +538,33 @@ function DetailRow({ icon, text }: { icon: React.ReactNode; text: string }) {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
+    errorBox: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: spacing.sm,
+        paddingHorizontal: spacing['2xl'],
+    },
+    errorTitle: {
+        fontFamily: typography.heading,
+        fontSize: fontSizes.lg,
+        color: colors.text,
+        textAlign: 'center',
+    },
+    errorText: {
+        fontFamily: typography.body,
+        fontSize: fontSizes.sm,
+        lineHeight: lineHeights.sm + 2,
+        color: colors.textSecondary,
+        textAlign: 'center',
+    },
+    shortcutHint: {
+        fontFamily: typography.body,
+        fontSize: fontSizes.xs,
+        lineHeight: lineHeights.xs + 3,
+        color: colors.textMuted,
+        textAlign: 'center',
+    },
     topBar: {
         flexDirection: 'row',
         alignItems: 'center',

@@ -194,6 +194,44 @@ export function useAdminArtisanDocuments(artisanId: string | null) {
     });
 }
 
+export interface PendingMetier {
+    id: string;
+    nom: string;
+    slug: string;
+    categorieId: string;
+    createdAt: string;
+    categorie: { id: string; nom: string; slug: string };
+    _count?: { artisanMetiers: number };
+}
+
+/** Métiers suggérés par des artisans, en attente de validation admin */
+export function usePendingMetiers(enabled = true) {
+    return useQuery({
+        queryKey: ['admin', 'pending-metiers'],
+        queryFn: async () => {
+            const { data } = await api.get<PendingMetier[]>('/metiers/admin/pending');
+            return data;
+        },
+        enabled,
+        refetchInterval: 30000,
+    });
+}
+
+/** Valide un métier suggéré : il devient visible des clients */
+export function useValidateMetier() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (metierId: string) => {
+            await api.patch(`/metiers/${metierId}/valider`);
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: ['admin', 'pending-metiers'] });
+            // La liste publique des métiers change après validation
+            void queryClient.invalidateQueries({ queryKey: ['metiers'] });
+        },
+    });
+}
+
 export function useVerifyCertification() {
     const invalidate = useInvalidateAdmin();
     return useMutation({

@@ -10,10 +10,13 @@ import {
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Hammer, HardHat, Check } from 'lucide-react-native';
+import { ArrowLeft, Hammer, HardHat, Check, MapPin } from 'lucide-react-native';
+import * as Location from 'expo-location';
 import { Button, Input } from '../components/ui';
+import { LoginInvite } from '../components/LoginInvite';
 import { useCategories } from '../features/catalog/hooks';
 import { useCreerAnnonce } from '../features/travailleurs/annonces-hooks';
+import { useAuth } from '../stores/auth';
 import { resolveCoords } from '../lib/geo';
 import { ApiError } from '../lib/api';
 import { colors, palette, spacing, typography, fontSizes, radii } from '../theme/tokens';
@@ -23,6 +26,7 @@ type Periode = 'UNE_JOURNEE' | 'PLUSIEURS_JOURS' | 'REGULIER';
 
 export default function PublierAnnonceScreen() {
     const router = useRouter();
+    const isAuth = useAuth((s) => s.status === 'authenticated');
     const { data: categories } = useCategories();
     const creer = useCreerAnnonce();
 
@@ -34,6 +38,34 @@ export default function PublierAnnonceScreen() {
     const [tarif, setTarif] = useState('');
     const [description, setDescription] = useState('');
     const [loading, setLoading] = useState(false);
+    // Coordonnées capturées via « Utiliser ma position » (réutilisées à l'envoi)
+    const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+    const [locating, setLocating] = useState(false);
+
+    const utiliserMaPosition = async () => {
+        setLocating(true);
+        try {
+            const c = await resolveCoords();
+            if (!c) {
+                Alert.alert(
+                    'Position indisponible',
+                    'Autorisez la localisation pour l’utiliser comme lieu du chantier.',
+                );
+                return;
+            }
+            setCoords(c);
+            try {
+                const geo = await Location.reverseGeocodeAsync(c);
+                const lieu = geo[0];
+                const nom = lieu?.city || lieu?.subregion || lieu?.district || lieu?.region;
+                if (nom) setVille(nom);
+            } catch {
+                // Géocodage inverse indisponible : on garde au moins les coordonnées
+            }
+        } finally {
+            setLocating(false);
+        }
+    };
 
     const metiers = useMemo(
         () => (categories ?? []).flatMap((c) => c.metiers ?? []),
@@ -51,8 +83,9 @@ export default function PublierAnnonceScreen() {
         }
         setLoading(true);
         try {
-            const coords = await resolveCoords();
-            if (!coords) {
+            // Réutilise la position déjà capturée, sinon la résout maintenant
+            const c = coords ?? (await resolveCoords());
+            if (!c) {
                 setLoading(false);
                 Alert.alert('Position requise', 'Autorisez la localisation pour cibler la main-d’œuvre proche.');
                 return;
@@ -61,8 +94,8 @@ export default function PublierAnnonceScreen() {
                 type,
                 metierId: metierId ?? undefined,
                 nombrePersonnes: Math.max(1, Number(nombre) || 1),
-                latitude: coords.latitude,
-                longitude: coords.longitude,
+                latitude: c.latitude,
+                longitude: c.longitude,
                 ville: ville.trim(),
                 periode,
                 tarifJournalier: tarif ? Number(tarif) : undefined,
@@ -90,6 +123,12 @@ export default function PublierAnnonceScreen() {
                 <Text style={styles.headerTitle}>Publier une annonce</Text>
             </View>
 
+            {!isAuth ? (
+                <LoginInvite
+                    title="Publier une annonce"
+                    message="Connectez-vous pour publier une annonce de chantier et être contacté par des ouvriers et aides."
+                />
+            ) : (
             <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
                 <ScrollView
                     contentContainerStyle={styles.content}
@@ -169,8 +208,27 @@ export default function PublierAnnonceScreen() {
                         label="Ville / lieu du chantier"
                         placeholder="Cotonou, Calavi…"
                         value={ville}
-                        onChangeText={setVille}
+                        onChangeText={(v) => {
+                            setVille(v);
+                            setCoords(null); // saisie manuelle → on ne réutilise plus le GPS
+                        }}
                     />
+                    <Pressable
+                        style={styles.gpsBtn}
+                        onPress={utiliserMaPosition}
+                        disabled={locating}
+                        accessibilityRole="button"
+                        accessibilityLabel="Utiliser ma position comme lieu du chantier"
+                    >
+                        <MapPin size={14} color={colors.primary} strokeWidth={2} />
+                        <Text style={styles.gpsBtnTxt}>
+                            {locating
+                                ? 'Localisation en cours…'
+                                : coords
+                                  ? 'Position utilisée ✓ (toucher pour actualiser)'
+                                  : 'Utiliser ma position'}
+                        </Text>
+                    </Pressable>
 
                     {/* Période */}
                     <Text style={styles.label}>Durée</Text>
@@ -225,6 +283,7 @@ export default function PublierAnnonceScreen() {
                     />
                 </ScrollView>
             </KeyboardAvoidingView>
+            )}
         </SafeAreaView>
     );
 }
@@ -254,6 +313,18 @@ const styles = StyleSheet.create({
         marginTop: spacing.sm,
     },
     hint: { fontFamily: typography.body, fontSize: fontSizes.xs, color: colors.textSecondary },
+    gpsBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        alignSelf: 'flex-start',
+        marginTop: -spacing.xs,
+    },
+    gpsBtnTxt: {
+        fontFamily: typography.bodySemiBold,
+        fontSize: fontSizes.xs,
+        color: colors.primary,
+    },
     segment: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
     segCard: {
         flex: 1,

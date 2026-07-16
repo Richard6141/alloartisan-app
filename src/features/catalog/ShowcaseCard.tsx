@@ -7,6 +7,7 @@ import { Star, Heart, BadgeCheck } from 'lucide-react-native';
 import { useFavorisSet, useToggleFavori } from '../favoris/hooks';
 import { useAuth } from '../../stores/auth';
 import { Avatar } from '../../components/ui';
+import { optimizedImage } from '../../lib/image';
 import type { ArtisanSummary } from '../../types/api';
 import {
     palette,
@@ -72,7 +73,7 @@ export function ShowcaseCard({
                 {/* Photo de couverture (repli : dégradé navy) */}
                 {artisan.photoCouvertureUrl ? (
                     <Image
-                        source={{ uri: artisan.photoCouvertureUrl }}
+                        source={{ uri: optimizedImage(artisan.photoCouvertureUrl, { width: 520 }) }}
                         style={StyleSheet.absoluteFill}
                         cachePolicy="memory-disk"
                         transition={200}

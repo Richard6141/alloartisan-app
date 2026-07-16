@@ -109,11 +109,15 @@ function AbonnementContent() {
         );
     }
 
-    const quotaPct =
-        mon?.quotaMensuel != null && mon.quotaMensuel > 0
-            ? Math.min(1, mon.demandesUtilisees / mon.quotaMensuel)
-            : 0;
-    const quotaEpuise = mon?.demandesRestantes === 0;
+    // Sur le palier GRATUIT, l'artisan n'a pas de quota mensuel (0) mais des
+    // « essais découverte » one-shot : c'est CE compteur qu'il faut montrer,
+    // sinon on affiche « 0/0 · Quota épuisé » alors qu'il a des essais offerts.
+    const surGratuit = (mon?.plan ?? 'GRATUIT') === 'GRATUIT';
+    const illimite = !surGratuit && mon?.quotaMensuel == null;
+    const restant = surGratuit ? (mon?.essaisRestants ?? 0) : (mon?.demandesRestantes ?? 0);
+    const total = surGratuit ? (mon?.essaisGratuits ?? 0) : (mon?.quotaMensuel ?? 0);
+    const remplissage = total > 0 ? Math.min(1, Math.max(0, restant) / total) : 0;
+    const quotaEpuise = !illimite && restant <= 0;
     const lookActuel = PLAN_LOOK[mon?.plan ?? 'GRATUIT'];
     const IconeActuel = lookActuel.icone;
 
@@ -142,17 +146,15 @@ function AbonnementContent() {
                             </Text>
                         </View>
                         <Text style={styles.currentQuota}>
-                            {mon?.quotaMensuel != null
-                                ? `${mon.demandesUtilisees}/${mon.quotaMensuel}`
-                                : '∞'}
+                            {illimite ? '∞' : `${Math.max(0, restant)}/${total}`}
                         </Text>
                     </View>
-                    {mon?.quotaMensuel != null && (
+                    {!illimite && total > 0 && (
                         <View style={styles.quotaTrack}>
                             <View
                                 style={[
                                     styles.quotaFill,
-                                    { width: `${Math.round(quotaPct * 100)}%` },
+                                    { width: `${Math.round(remplissage * 100)}%` },
                                     quotaEpuise && { backgroundColor: palette.red600 },
                                 ]}
                             />
@@ -160,8 +162,12 @@ function AbonnementContent() {
                     )}
                     <Text style={styles.currentHint} numberOfLines={2}>
                         {quotaEpuise
-                            ? 'Quota épuisé : les clients ne peuvent plus vous contacter ce mois-ci.'
-                            : 'Mises en relation utilisées ce mois. Les clients ne paient jamais rien.'}
+                            ? surGratuit
+                                ? 'Vos mises en relation découverte sont épuisées. Passez à un palier pour continuer à recevoir des clients.'
+                                : 'Quota épuisé ce mois-ci. Passez à un palier supérieur pour recevoir plus de clients.'
+                            : surGratuit
+                              ? `Il vous reste ${Math.max(0, restant)} mise(s) en relation découverte offerte(s). Les clients ne paient jamais rien.`
+                              : 'Mises en relation restantes ce mois. Les clients ne paient jamais rien.'}
                     </Text>
                 </LinearGradient>
 
@@ -207,9 +213,11 @@ function AbonnementContent() {
                                     )}
                                 </View>
                                 <Text style={styles.planMissions} numberOfLines={1}>
-                                    {plan.demandesMois == null
-                                        ? 'Mises en relation illimitées'
-                                        : `${plan.demandesMois} mises en relation / mois`}
+                                    {plan.type === 'GRATUIT'
+                                        ? `${mon?.essaisGratuits ?? 3} mises en relation offertes`
+                                        : plan.demandesMois == null
+                                          ? 'Mises en relation illimitées'
+                                          : `${plan.demandesMois} mises en relation / mois`}
                                 </Text>
                             </View>
                             <View style={{ alignItems: 'flex-end' }}>

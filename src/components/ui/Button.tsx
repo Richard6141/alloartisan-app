@@ -1,13 +1,7 @@
 import React from 'react';
-import {
-    Pressable,
-    Text,
-    ActivityIndicator,
-    StyleSheet,
-    ViewStyle,
-    StyleProp,
-} from 'react-native';
+import { Pressable, Text, StyleSheet, ViewStyle, StyleProp } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { Spinner } from './Spinner';
 import { colors, radii, spacing, typography, fontSizes, TOUCH_TARGET } from '../../theme/tokens';
 
 type Variant = 'primary' | 'accent' | 'secondary' | 'ghost' | 'danger';
@@ -90,19 +84,14 @@ export function Button({
                 style,
             ]}
         >
-            {loading ? (
-                <ActivityIndicator color={v.fg} size="small" />
-            ) : (
-                <>
-                    {icon}
-                    <Text
-                        style={[styles.label, { color: v.fg, fontSize: s.fontSize }]}
-                        numberOfLines={1}
-                    >
-                        {title}
-                    </Text>
-                </>
-            )}
+            {/* En chargement : spinner animé (fiable sur Samsung) + libellé conservé */}
+            {loading ? <Spinner size={s.fontSize + 2} color={v.fg} /> : icon}
+            <Text
+                style={[styles.label, { color: v.fg, fontSize: s.fontSize }]}
+                numberOfLines={1}
+            >
+                {title}
+            </Text>
         </Pressable>
     );
 }

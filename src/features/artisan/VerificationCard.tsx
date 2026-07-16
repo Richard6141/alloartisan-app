@@ -42,7 +42,11 @@ export function ArtisanQuotaCard() {
                 <View style={[styles.card, { backgroundColor: palette.green100 }]}>
                     <Gift size={19} color={palette.green700} strokeWidth={2} />
                     <View style={{ flex: 1 }}>
-                        <Text style={[styles.title, { color: palette.green700 }]}>
+                        <Text
+                            style={[styles.title, { color: palette.green700 }]}
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                        >
                             {essaisRestants} mise{s} en relation offerte{s}
                         </Text>
                         <Text
@@ -82,6 +86,8 @@ export function ArtisanQuotaCard() {
                             styles.title,
                             { color: epuise ? palette.red700 : palette.terracotta700 },
                         ]}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
                     >
                         {epuise
                             ? gratuit
@@ -139,7 +145,9 @@ export function ArtisanVerificationCard() {
                     >
                         <ShieldCheck size={19} color={palette.white} strokeWidth={2} />
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.title}>Créez votre profil artisan</Text>
+                            <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit>
+                                Créez votre profil artisan
+                            </Text>
                             <Text style={styles.subtitle} numberOfLines={1}>
                                 2 minutes pour devenir visible des clients
                             </Text>
@@ -166,7 +174,11 @@ export function ArtisanVerificationCard() {
                 <View style={[styles.card, { backgroundColor: colors.dangerSoft }]}>
                     <XCircle size={19} color={palette.red700} strokeWidth={2} />
                     <View style={{ flex: 1 }}>
-                        <Text style={[styles.title, { color: palette.red700 }]}>
+                        <Text
+                            style={[styles.title, { color: palette.red700 }]}
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                        >
                             Profil refusé, corrigez votre dossier
                         </Text>
                         <Text
@@ -228,9 +240,9 @@ export function ArtisanVerificationCard() {
                 <View style={styles.row}>
                     <ShieldCheck size={19} color={palette.white} strokeWidth={2} />
                     <View style={{ flex: 1 }}>
-                        <Text style={styles.title}>
+                        <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit>
                             {dossierComplet
-                                ? 'Dossier en cours d\'examen (24-48 h)'
+                                ? 'Dossier en examen · 24-48 h'
                                 : 'Faites valider votre profil'}
                         </Text>
                         <Text style={styles.subtitle} numberOfLines={1}>

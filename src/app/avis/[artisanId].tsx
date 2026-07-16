@@ -5,7 +5,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import { ArrowLeft, MessageSquareOff } from 'lucide-react-native';
 import { useArtisanAvis } from '../../features/artisans/hooks';
+import { useMyArtisanProfile } from '../../features/artisan/hooks';
 import { AvisItem } from '../../features/artisans/AvisItem';
+import { useAuth } from '../../stores/auth';
 import { Skeleton, EmptyState } from '../../components/ui';
 import { colors, spacing, typography, fontSizes, radii } from '../../theme/tokens';
 
@@ -14,6 +16,10 @@ export default function AvisListScreen() {
     const { artisanId, nom } = useLocalSearchParams<{ artisanId: string; nom?: string }>();
     const router = useRouter();
     const { data: avis, isLoading } = useArtisanAvis(artisanId, 50);
+    // L'artisan propriétaire de ces avis peut y répondre
+    const isArtisan = useAuth((s) => s.user?.role === 'ARTISAN');
+    const { data: myArtisan } = useMyArtisanProfile(isArtisan);
+    const canReply = isArtisan && myArtisan?.id === artisanId;
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -59,7 +65,9 @@ export default function AvisListScreen() {
                         paddingBottom: spacing['3xl'],
                     }}
                     ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
-                    renderItem={({ item }) => <AvisItem avis={item} />}
+                    renderItem={({ item }) => (
+                        <AvisItem avis={item} artisanId={artisanId} canReply={canReply} />
+                    )}
                 />
             )}
         </SafeAreaView>

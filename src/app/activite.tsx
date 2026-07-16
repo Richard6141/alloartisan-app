@@ -23,7 +23,7 @@ import { api, ApiError } from '../lib/api';
 import { useAuth } from '../stores/auth';
 import { LoginInvite } from '../components/LoginInvite';
 import { Card, Skeleton } from '../components/ui';
-import { useMyArtisanProfile } from '../features/artisan/hooks';
+import { useMyArtisanProfile, useMySubscription } from '../features/artisan/hooks';
 import { colors, palette, spacing, typography, fontSizes, lineHeights, radii } from '../theme/tokens';
 
 interface ArtisanStats {
@@ -87,6 +87,20 @@ function ActivityContent() {
     });
 
     const { data: me } = useMyArtisanProfile();
+    const { data: sub } = useMySubscription();
+
+    // Source de vérité pour « ce qu'il me reste » : sur le palier GRATUIT ce
+    // sont les ESSAIS DÉCOUVERTE (le quota mensuel y est 0), sinon le quota.
+    const surGratuit = (sub?.plan ?? 'GRATUIT') === 'GRATUIT';
+    const illimite = !surGratuit && sub?.demandesRestantes == null;
+    const essaisRestants = sub?.essaisRestants ?? 0;
+    const restantes = surGratuit ? essaisRestants : (sub?.demandesRestantes ?? 0);
+    // Nudge d'upgrade : sur GRATUIT quand les essais sont épuisés ; sinon quota bas
+    const nudgeVisible =
+        sub != null &&
+        !illimite &&
+        (surGratuit ? essaisRestants === 0 : (sub?.demandesRestantes ?? 99) <= 1);
+    const nudgeEpuise = surGratuit ? essaisRestants === 0 : restantes === 0;
 
     const toggleDispo = useMutation({
         mutationFn: async (disponible: boolean) => {
@@ -242,53 +256,47 @@ function ActivityContent() {
             </Card>
 
             {/* Quota épuisé ou presque : pousser à l'upgrade */}
-            {stats?.quotaRestant != null && stats.quotaRestant <= 1 && (
+            {nudgeVisible && (
                 <Pressable onPress={() => router.push('/abonnement')} accessibilityRole="button">
                     <Card
                         style={[
                             styles.verifyCard,
                             {
-                                backgroundColor:
-                                    stats.quotaRestant === 0
-                                        ? colors.dangerSoft
-                                        : colors.warningSoft,
+                                backgroundColor: nudgeEpuise
+                                    ? colors.dangerSoft
+                                    : colors.warningSoft,
                             },
                         ]}
                     >
                         <Gauge
                             size={20}
-                            color={
-                                stats.quotaRestant === 0 ? palette.red700 : palette.terracotta700
-                            }
+                            color={nudgeEpuise ? palette.red700 : palette.terracotta700}
                             strokeWidth={2.2}
                         />
                         <View style={{ flex: 1 }}>
                             <Text
                                 style={[
                                     styles.verifyTitle,
-                                    {
-                                        color:
-                                            stats.quotaRestant === 0
-                                                ? palette.red700
-                                                : palette.terracotta700,
-                                    },
+                                    { color: nudgeEpuise ? palette.red700 : palette.terracotta700 },
                                 ]}
                             >
-                                {stats.quotaRestant === 0
-                                    ? 'Quota du mois épuisé'
+                                {nudgeEpuise
+                                    ? surGratuit
+                                        ? 'Essais découverte épuisés'
+                                        : 'Quota du mois épuisé'
                                     : 'Plus qu’une mise en relation ce mois'}
                             </Text>
                             <Text style={styles.verifyText}>
-                                {stats.quotaRestant === 0
-                                    ? 'Les clients ne peuvent plus vous contacter. Passez au palier supérieur pour continuer à recevoir des demandes.'
+                                {nudgeEpuise
+                                    ? surGratuit
+                                        ? 'Vos mises en relation découverte sont épuisées. Abonnez-vous pour continuer à recevoir des demandes.'
+                                        : 'Les clients ne peuvent plus vous contacter. Passez au palier supérieur pour continuer à recevoir des demandes.'
                                     : 'Passez à un palier supérieur pour continuer à recevoir des demandes sans interruption.'}
                             </Text>
                         </View>
                         <ChevronRight
                             size={18}
-                            color={
-                                stats.quotaRestant === 0 ? palette.red700 : palette.terracotta700
-                            }
+                            color={nudgeEpuise ? palette.red700 : palette.terracotta700}
                             strokeWidth={2.2}
                         />
                     </Card>
@@ -305,10 +313,12 @@ function ActivityContent() {
                     <Card style={[styles.statCard, { flex: undefined }]}>
                         <Gauge size={17} color={colors.accent} strokeWidth={2} />
                         <Text style={styles.statValue}>
-                            {stats?.quotaRestant == null ? '∞' : stats.quotaRestant}
+                            {illimite ? '∞' : Math.max(0, restantes)}
                         </Text>
                         <Text style={styles.statLabel}>
-                            demandes restantes · gérer mon abonnement
+                            {surGratuit
+                                ? 'mises en relation offertes · gérer'
+                                : 'demandes restantes · gérer mon abonnement'}
                         </Text>
                     </Card>
                 </Pressable>

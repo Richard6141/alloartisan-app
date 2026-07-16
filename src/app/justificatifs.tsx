@@ -8,7 +8,6 @@ import {
     KeyboardAvoidingView,
     Platform,
     Alert,
-    ActivityIndicator,
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -38,7 +37,7 @@ import { ApiError } from '../lib/api';
 import { suppressLock } from '../lib/lockGuard';
 import { useAuth } from '../stores/auth';
 import { LoginInvite } from '../components/LoginInvite';
-import { Button, Input, Card, Skeleton } from '../components/ui';
+import { Button, Input, Card, Skeleton, Spinner } from '../components/ui';
 import {
     useMyArtisanProfile,
     useMyCertifications,
@@ -432,7 +431,7 @@ function JustificatifsContent() {
                     {!identite &&
                         (identiteEnvoi ? (
                             <View style={styles.identiteLoading}>
-                                <ActivityIndicator size="small" color={colors.primary} />
+                                <Spinner size={18} color={colors.primary} />
                                 <Text style={styles.certOrg}>Envoi en cours…</Text>
                             </View>
                         ) : (

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
+import { optimizedImage } from '../lib/image';
 import { X } from 'lucide-react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
@@ -99,7 +100,7 @@ export function ImageViewer({
                     {uri && (
                         <Animated.View style={[StyleSheet.absoluteFill, imageStyle]}>
                             <Image
-                                source={{ uri }}
+                                source={{ uri: optimizedImage(uri, { width: 1080 }) }}
                                 style={StyleSheet.absoluteFill}
                                 contentFit="contain"
                                 cachePolicy="memory-disk"

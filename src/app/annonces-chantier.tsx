@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Alert } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import { ArrowLeft, MapPinOff, Megaphone, MapPin, Hammer, HardHat, Check } from 'lucide-react-native';
-import { EmptyState, Button } from '../components/ui';
+import { EmptyState, Button, Spinner } from '../components/ui';
+import { LoginInvite } from '../components/LoginInvite';
 import { useAnnoncesAutour, useManifesterInteret } from '../features/travailleurs/annonces-hooks';
 import { useMonProfilTravailleur } from '../features/travailleurs/hooks';
+import { useAuth } from '../stores/auth';
 import { resolveCoords } from '../lib/geo';
 import { ApiError } from '../lib/api';
 import type { AnnonceChantier } from '../types/api';
@@ -22,7 +24,8 @@ const PERIODE_LABEL: Record<AnnonceChantier['periode'], string> = {
 
 export default function AnnoncesChantierScreen() {
     const router = useRouter();
-    const { data: profil } = useMonProfilTravailleur();
+    const isAuth = useAuth((s) => s.status === 'authenticated');
+    const { data: profil } = useMonProfilTravailleur(isAuth);
     const [position, setPosition] = useState<{ latitude: number; longitude: number } | null>(null);
     const [denied, setDenied] = useState(false);
     const [filtre, setFiltre] = useState<Filtre>('TOUS');
@@ -92,6 +95,13 @@ export default function AnnoncesChantierScreen() {
                 </View>
             </View>
 
+            {!isAuth ? (
+                <LoginInvite
+                    title="Annonces de chantier"
+                    message="Connectez-vous pour voir les chantiers près de vous et vous manifester."
+                />
+            ) : (
+              <>
             <View style={styles.segment}>
                 {(
                     [
@@ -121,7 +131,7 @@ export default function AnnoncesChantierScreen() {
                 />
             ) : !position || isLoading ? (
                 <View style={styles.loader}>
-                    <ActivityIndicator color={colors.primary} />
+                    <Spinner color={colors.primary} size={30} />
                 </View>
             ) : !data || data.length === 0 ? (
                 <EmptyState
@@ -199,6 +209,8 @@ export default function AnnoncesChantierScreen() {
                         );
                     }}
                 />
+            )}
+              </>
             )}
         </SafeAreaView>
     );

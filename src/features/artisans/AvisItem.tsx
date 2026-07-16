@@ -1,19 +1,44 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Star } from 'lucide-react-native';
-import { Avatar } from '../../components/ui';
-import type { Avis } from './hooks';
+import { View, Text, StyleSheet, Pressable, TextInput, Alert } from 'react-native';
+import { Star, CornerDownRight, Flag } from 'lucide-react-native';
+import { Avatar, Button } from '../../components/ui';
+import { useAuth } from '../../stores/auth';
+import type { Avis, RaisonSignalement } from './hooks';
+import { useRespondAvis, useReportAvis } from './hooks';
 import { colors, spacing, typography, fontSizes, lineHeights, radii } from '../../theme/tokens';
 
 const LONG_THRESHOLD = 140;
 
+const RAISONS: { key: RaisonSignalement; label: string }[] = [
+    { key: 'CONTENU_INAPPROPRIE', label: 'Contenu inapproprié' },
+    { key: 'FAUX_AVIS', label: 'Faux avis' },
+    { key: 'HARCELEMENT', label: 'Harcèlement' },
+    { key: 'AUTRE', label: 'Autre' },
+];
+
 /**
  * Carte d'avis client : photo de profil, nom, date, note en étoiles,
  * commentaire replié au-delà de 3 lignes (« Lire plus »).
+ * `canReply` : l'artisan propriétaire peut répondre. Tout utilisateur connecté
+ * peut signaler un avis abusif.
  */
-export function AvisItem({ avis }: { avis: Avis }) {
+export function AvisItem({
+    avis,
+    artisanId,
+    canReply = false,
+}: {
+    avis: Avis;
+    artisanId?: string;
+    canReply?: boolean;
+}) {
     const [expanded, setExpanded] = useState(false);
+    const [replying, setReplying] = useState(false);
+    const [reponse, setReponse] = useState('');
+    const isAuthenticated = useAuth((s) => s.status === 'authenticated');
     const isLong = (avis.commentaire?.length ?? 0) > LONG_THRESHOLD;
+
+    const respond = useRespondAvis(artisanId ?? '');
+    const report = useReportAvis();
 
     const nom = avis.client?.prenom
         ? `${avis.client.prenom} ${avis.client?.nom?.charAt(0) ?? ''}.`.trim()
@@ -23,6 +48,48 @@ export function AvisItem({ avis }: { avis: Avis }) {
         month: 'short',
         year: 'numeric',
     });
+
+    const sendReponse = () => {
+        if (!reponse.trim() || !artisanId) return;
+        respond.mutate(
+            { avisId: avis.id, reponse: reponse.trim() },
+            {
+                onSuccess: () => {
+                    setReplying(false);
+                    setReponse('');
+                    Alert.alert('Réponse publiée ✅', 'Votre réponse est visible sous l’avis.');
+                },
+                onError: () =>
+                    Alert.alert('Impossible', 'Réponse non enregistrée. Réessayez.'),
+            },
+        );
+    };
+
+    const signaler = () => {
+        Alert.alert(
+            'Signaler cet avis',
+            'Pourquoi signalez-vous cet avis ?',
+            [
+                ...RAISONS.map((r) => ({
+                    text: r.label,
+                    onPress: () =>
+                        report.mutate(
+                            { avisId: avis.id, raison: r.key },
+                            {
+                                onSuccess: () =>
+                                    Alert.alert(
+                                        'Merci',
+                                        'Signalement transmis à notre équipe de modération.',
+                                    ),
+                                onError: () =>
+                                    Alert.alert('Impossible', 'Signalement non envoyé. Réessayez.'),
+                            },
+                        ),
+                })),
+                { text: 'Annuler', style: 'cancel' as const },
+            ],
+        );
+    };
 
     return (
         <View style={styles.card}>
@@ -73,6 +140,54 @@ export function AvisItem({ avis }: { avis: Avis }) {
                     <Text style={styles.text}>{avis.reponseArtisan}</Text>
                 </View>
             ) : null}
+
+            {/* Composer la réponse artisan (propriétaire, avis sans réponse) */}
+            {canReply && !avis.reponseArtisan ? (
+                replying ? (
+                    <View style={styles.replyBox}>
+                        <TextInput
+                            value={reponse}
+                            onChangeText={setReponse}
+                            placeholder="Votre réponse (publique)…"
+                            placeholderTextColor={colors.textMuted}
+                            style={styles.replyInput}
+                            multiline
+                            maxLength={1000}
+                            autoFocus
+                        />
+                        <View style={styles.replyActions}>
+                            <Button
+                                title="Annuler"
+                                variant="ghost"
+                                size="sm"
+                                onPress={() => {
+                                    setReplying(false);
+                                    setReponse('');
+                                }}
+                            />
+                            <Button
+                                title="Publier"
+                                size="sm"
+                                loading={respond.isPending}
+                                onPress={sendReponse}
+                            />
+                        </View>
+                    </View>
+                ) : (
+                    <Pressable style={styles.actionRow} onPress={() => setReplying(true)} hitSlop={8}>
+                        <CornerDownRight size={14} color={colors.primary} strokeWidth={2} />
+                        <Text style={styles.actionTxt}>Répondre</Text>
+                    </Pressable>
+                )
+            ) : null}
+
+            {/* Signaler (tout utilisateur connecté) */}
+            {isAuthenticated && (
+                <Pressable style={styles.reportRow} onPress={signaler} hitSlop={8}>
+                    <Flag size={12} color={colors.textMuted} strokeWidth={2} />
+                    <Text style={styles.reportTxt}>Signaler</Text>
+                </Pressable>
+            )}
         </View>
     );
 }
@@ -124,5 +239,34 @@ const styles = StyleSheet.create({
         fontFamily: typography.bodySemiBold,
         fontSize: fontSizes.xs - 1,
         color: colors.text,
+    },
+    replyBox: { gap: spacing.sm },
+    replyInput: {
+        fontFamily: typography.body,
+        fontSize: fontSizes.sm,
+        color: colors.text,
+        backgroundColor: colors.surfaceMuted,
+        borderRadius: radii.sm,
+        padding: spacing.sm,
+        minHeight: 64,
+        textAlignVertical: 'top',
+    },
+    replyActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm },
+    actionRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+    actionTxt: {
+        fontFamily: typography.bodySemiBold,
+        fontSize: fontSizes.xs,
+        color: colors.primary,
+    },
+    reportRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        alignSelf: 'flex-start',
+    },
+    reportTxt: {
+        fontFamily: typography.body,
+        fontSize: fontSizes.xs - 1,
+        color: colors.textMuted,
     },
 });

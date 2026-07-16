@@ -93,23 +93,56 @@ export async function unregisterForPush(): Promise<void> {
  * Routage au TAP sur une notification (app en arrière-plan ou fermée).
  * S'appuie sur le champ `data` envoyé par le back (mêmes clés que le socket).
  */
+function routeFromData(data: Record<string, string> | undefined, router: AppRouter): void {
+    const d = data ?? {};
+    if (d.conversationId) {
+        router.push({
+            pathname: '/conversation/[id]',
+            params: { id: d.conversationId, nom: d.senderNom ?? '' },
+        });
+    } else if (d.bookingId) {
+        router.push({ pathname: '/booking/[id]', params: { id: d.bookingId } });
+    } else if (d.screen === 'mes-annonces') {
+        router.push('/mes-annonces');
+    } else if (d.screen === 'main-doeuvre') {
+        router.push('/annonces-chantier');
+    } else {
+        router.push('/notifications');
+    }
+}
+
+/** Tap sur une notification quand l'app est OUVERTE ou en arrière-plan. */
 export function useNotificationTapRouting(router: AppRouter): () => void {
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-        const data = (response.notification.request.content.data ?? {}) as Record<string, string>;
-        if (data.conversationId) {
-            router.push({
-                pathname: '/conversation/[id]',
-                params: { id: data.conversationId, nom: data.senderNom ?? '' },
-            });
-        } else if (data.bookingId) {
-            router.push({ pathname: '/booking/[id]', params: { id: data.bookingId } });
-        } else if (data.screen === 'mes-annonces') {
-            router.push('/mes-annonces');
-        } else if (data.screen === 'main-doeuvre') {
-            router.push('/annonces-chantier');
-        } else {
-            router.push('/notifications');
-        }
+        routeFromData(
+            response.notification.request.content.data as Record<string, string> | undefined,
+            router,
+        );
     });
     return () => sub.remove();
+}
+
+let coldStartConsumed = false;
+
+/**
+ * App LANCÉE À FROID par un tap sur une notification : le listener ci-dessus
+ * est branché trop tard pour l'attraper. On récupère donc la notification qui
+ * a ouvert l'app et on route dessus — une seule fois, une fois l'app prête.
+ */
+export async function consumeInitialNotification(router: AppRouter): Promise<void> {
+    if (coldStartConsumed) return;
+    coldStartConsumed = true;
+    try {
+        const response = await Notifications.getLastNotificationResponseAsync();
+        if (!response) return;
+        // Laisser le navigateur se poser après le démarrage à froid
+        setTimeout(() => {
+            routeFromData(
+                response.notification.request.content.data as Record<string, string> | undefined,
+                router,
+            );
+        }, 600);
+    } catch {
+        // pas de notification initiale : rien à faire
+    }
 }

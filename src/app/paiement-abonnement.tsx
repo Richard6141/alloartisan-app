@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
@@ -10,6 +10,7 @@ import {
     useVerifierPaiementAbonnement,
     type PlanPayant,
 } from '../features/artisan/hooks';
+import { Spinner } from '../components/ui';
 import { colors, spacing, typography, fontSizes, radii } from '../theme/tokens';
 
 /**
@@ -146,7 +147,7 @@ export default function PaiementAbonnementScreen() {
                 />
             ) : (
                 <View style={styles.loading}>
-                    <ActivityIndicator size="large" color={colors.primary} />
+                    <Spinner size={34} color={colors.primary} />
                     <Text style={styles.loadingText}>Préparation du paiement sécurisé…</Text>
                 </View>
             )}
@@ -154,7 +155,7 @@ export default function PaiementAbonnementScreen() {
             {verifier.isPending && (
                 <View style={styles.verifOverlay} pointerEvents="none">
                     <View style={styles.verifBox}>
-                        <ActivityIndicator size="small" color={colors.primary} />
+                        <Spinner size={18} color={colors.primary} />
                         <Text style={styles.verifText}>Vérification du paiement…</Text>
                     </View>
                 </View>

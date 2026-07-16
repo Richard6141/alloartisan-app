@@ -61,6 +61,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '../../lib/api';
+import { optimizedImage } from '../../lib/image';
 import { suppressLock } from '../../lib/lockGuard';
 import { LiveMap } from '../../components/LiveMap';
 import { VideoRecorder } from '../../components/VideoRecorder';
@@ -1416,7 +1417,7 @@ function MessageBubble({
                             accessibilityLabel="Agrandir la photo"
                         >
                             <Image
-                                source={{ uri: message.mediaUrl }}
+                                source={{ uri: optimizedImage(message.mediaUrl, { width: 600 }) }}
                                 style={styles.imageContent}
                                 cachePolicy="memory-disk"
                                 transition={150}

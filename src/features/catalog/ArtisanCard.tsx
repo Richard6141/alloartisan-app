@@ -1,8 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Star, BadgeCheck, Zap, MapPin } from 'lucide-react-native';
+import { Star, BadgeCheck, Zap, MapPin, Medal } from 'lucide-react-native';
 import { Avatar } from '../../components/ui';
 import type { ArtisanSummary } from '../../types/api';
+
+const AMBASSADEUR_COLOR: Record<'BRONZE' | 'ARGENT' | 'OR', string> = {
+    BRONZE: '#B45309',
+    ARGENT: '#64748B',
+    OR: '#CA8A04',
+};
 import {
     colors,
     palette,
@@ -76,6 +82,14 @@ export function ArtisanCard({
                         </Text>
                         {artisan.verified && (
                             <BadgeCheck size={14} color={colors.primary} strokeWidth={2.4} />
+                        )}
+                        {artisan.ambassadeurNiveau && (
+                            <Medal
+                                size={14}
+                                color={AMBASSADEUR_COLOR[artisan.ambassadeurNiveau]}
+                                strokeWidth={2.2}
+                                accessibilityLabel={`Ambassadeur ${artisan.ambassadeurNiveau}`}
+                            />
                         )}
                     </View>
                     {metierPrincipal ? (

@@ -6,7 +6,8 @@ import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
 import { LiveMap } from '../../components/LiveMap';
 import type { Socket } from 'socket.io-client';
-import { ArrowLeft, MapPin, Clock, Radio } from 'lucide-react-native';
+import { ArrowLeft, MapPin, Clock, Radio, Navigation } from 'lucide-react-native';
+import { openExternalNavigation } from '../../lib/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { queryKeys } from '../../lib/queryClient';
@@ -241,6 +242,17 @@ export default function TrackingScreen() {
                             })()}
                         </Text>
                     )}
+                    {destination && (
+                        <Pressable
+                            style={styles.itinButton}
+                            onPress={() => openExternalNavigation(destination)}
+                            accessibilityRole="button"
+                            accessibilityLabel="Lancer l'itinéraire vers le client"
+                        >
+                            <Navigation size={18} color={palette.white} strokeWidth={2.2} />
+                            <Text style={styles.itinButtonTxt}>Itinéraire vers le client</Text>
+                        </Pressable>
+                    )}
                     <View style={styles.phaseButtons}>
                         <Button
                             title="🛵 En route"
@@ -367,6 +379,20 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.sm,
+    },
+    itinButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: spacing.sm,
+        backgroundColor: colors.primary,
+        borderRadius: radii.lg,
+        paddingVertical: spacing.md,
+    },
+    itinButtonTxt: {
+        fontFamily: typography.bodySemiBold,
+        fontSize: fontSizes.base,
+        color: palette.white,
     },
     phaseButtons: {
         flexDirection: 'row',

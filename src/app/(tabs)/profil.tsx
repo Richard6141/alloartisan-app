@@ -21,14 +21,32 @@ import {
     Users,
     Hammer,
     Megaphone,
+    Trophy,
+    Share2,
+    Medal,
 } from 'lucide-react-native';
 import { api } from '../../lib/api';
-import { queryKeys } from '../../lib/queryClient';
 import { useAuth } from '../../stores/auth';
+import { useMyArtisanProfile } from '../../features/artisan/hooks';
 import { suppressLock } from '../../lib/lockGuard';
 import { LoginInvite } from '../../components/LoginInvite';
-import { Avatar, Card } from '../../components/ui';
+import { Avatar } from '../../components/ui';
 import { colors, palette, spacing, typography, fontSizes, radii, shadows } from '../../theme/tokens';
+
+/** Palettes des pastilles d'icône (variées mais cohérentes) */
+const CHIP = {
+    navy: { bg: colors.primarySoft, fg: colors.primary },
+    terracotta: { bg: '#FEEBE0', fg: palette.terracotta700 },
+    green: { bg: colors.successSoft, fg: palette.green700 },
+    amber: { bg: colors.warningSoft, fg: '#B45309' },
+} as const;
+type ChipTone = keyof typeof CHIP;
+
+const AMBASSADEUR_COLOR: Record<'BRONZE' | 'ARGENT' | 'OR', string> = {
+    BRONZE: '#B45309',
+    ARGENT: '#64748B',
+    OR: '#CA8A04',
+};
 
 export default function ProfilScreen() {
     const status = useAuth((s) => s.status);
@@ -38,7 +56,7 @@ export default function ProfilScreen() {
             <SafeAreaView style={styles.container} edges={['top']}>
                 <LoginInvite
                     title="Votre profil"
-                    message="Connectez-vous pour gérer votre compte, vos favoris et gagner des récompenses de parrainage."
+                    message="Connectez-vous pour gérer votre compte, vos favoris et parrainer vos proches."
                 />
             </SafeAreaView>
         );
@@ -51,7 +69,10 @@ function ProfileContent() {
     const router = useRouter();
     const user = useAuth((s) => s.user);
     const logout = useAuth((s) => s.logout);
+    const isArtisan = user?.role === 'ARTISAN';
+    const isAdmin = user?.role === 'ADMIN';
 
+    const { data: monArtisan } = useMyArtisanProfile(isArtisan);
     const { data: referral } = useQuery({
         queryKey: ['referral', 'code'],
         queryFn: async () => {
@@ -62,14 +83,14 @@ function ProfileContent() {
     });
 
     const nom = `${user?.prenom ?? ''} ${user?.nom ?? ''}`.trim() || user?.email || 'Utilisateur';
+    const niveau = monArtisan?.ambassadeurNiveau ?? null;
+    const profilIncomplet = !user?.prenom || !user?.telephone || !user?.photoUrl;
 
     const shareCode = async () => {
         if (!referral?.code) return;
-        suppressLock(); // la feuille de partage ne doit pas déclencher l'empreinte
+        suppressLock();
         await Share.share({
-            message:
-                `Rejoins-moi sur AlloArtisan ! Les meilleurs artisans du Bénin, suivis en temps réel. ` +
-                `Utilise mon code ${referral.code} et gagne 500 F sur ta première intervention. 🛠️`,
+            message: `Rejoins AlloArtisan avec mon code parrain ${referral.code} : on gagne chacun des jours d'abonnement offerts ! 🛠️`,
         });
     };
 
@@ -83,187 +104,228 @@ function ProfileContent() {
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                {/* En-tête profil */}
-                <View style={styles.header}>
-                    <Avatar name={nom} uri={user?.photoUrl} size={72} />
+                {/* ─── Carte d'identité ─── */}
+                <Pressable
+                    style={styles.identity}
+                    onPress={() => router.push('/parametres')}
+                    accessibilityRole="button"
+                    accessibilityLabel="Modifier mon profil"
+                >
+                    <Avatar name={nom} uri={user?.photoUrl} size={60} />
                     <View style={{ flex: 1 }}>
                         <View style={styles.nameRow}>
                             <Text style={styles.name} numberOfLines={1}>
                                 {nom}
                             </Text>
                             {user?.emailVerified && (
-                                <BadgeCheck size={18} color={colors.primary} strokeWidth={2.2} />
+                                <BadgeCheck size={17} color={colors.primary} strokeWidth={2.2} />
+                            )}
+                            {niveau && (
+                                <Medal size={16} color={AMBASSADEUR_COLOR[niveau]} strokeWidth={2.2} />
                             )}
                         </View>
                         <Text style={styles.email} numberOfLines={1}>
                             {user?.email}
                         </Text>
-                        <Text style={styles.role}>
-                            {user?.role === 'ARTISAN' ? 'Compte artisan' : 'Compte client'}
-                        </Text>
+                        <View style={styles.roleChip}>
+                            <Text style={styles.roleChipTxt}>
+                                {isAdmin ? 'Admin' : isArtisan ? 'Artisan' : 'Client'}
+                            </Text>
+                        </View>
                     </View>
-                </View>
+                    <ChevronRight size={18} color={colors.textMuted} strokeWidth={2} />
+                </Pressable>
 
-                {/* Profil incomplet : invitation à le compléter en 4 étapes */}
-                {(!user?.prenom || !user?.telephone || !user?.photoUrl) && (
+                {/* Profil incomplet */}
+                {profilIncomplet && (
                     <Pressable
                         onPress={() => router.push('/completer-profil')}
                         accessibilityRole="button"
-                        style={({ pressed }) => [
-                            styles.completeBanner,
-                            pressed && { opacity: 0.9 },
-                        ]}
+                        style={({ pressed }) => [styles.completeBanner, pressed && { opacity: 0.9 }]}
                     >
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.completeTitle}>Complétez votre profil</Text>
-                            <Text style={styles.completeText}>
-                                Photo, téléphone, adresse : 2 minutes pour inspirer confiance
+                            <Text style={styles.completeTitle} numberOfLines={1}>
+                                Complétez votre profil
+                            </Text>
+                            <Text style={styles.completeText} numberOfLines={1}>
+                                Photo, téléphone : 2 min pour inspirer confiance
                             </Text>
                         </View>
                         <ChevronRight size={18} color={colors.primary} strokeWidth={2.2} />
                     </Pressable>
                 )}
 
-                {/* Carte parrainage */}
-                <Card style={styles.referralCard}>
-                    <View style={styles.referralHeader}>
-                        <Gift size={20} color={colors.accent} strokeWidth={2} />
-                        <Text style={styles.referralTitle}>Parrainez et gagnez 1 000 F</Text>
-                    </View>
-                    <Text style={styles.referralText}>
-                        Votre filleul gagne 500 F, vous gagnez 1 000 F dès sa première
-                        intervention payée.
-                    </Text>
-                    <Pressable
-                        onPress={shareCode}
-                        style={styles.codeBox}
-                        accessibilityRole="button"
-                        accessibilityLabel="Partager mon code parrainage"
-                    >
-                        <Text style={styles.codeText}>{referral?.code ?? '••••••'}</Text>
-                        <Text style={styles.codeShare}>Partager</Text>
-                    </Pressable>
-                </Card>
+                {/* ─── Accès rapides (grille de tuiles) ─── */}
+                <View style={styles.grid}>
+                    {isArtisan ? (
+                        <>
+                            <QuickTile
+                                tone="navy"
+                                icon={BarChart3}
+                                label="Mon activité"
+                                onPress={() => router.push('/activite')}
+                            />
+                            <QuickTile
+                                tone="amber"
+                                icon={Gauge}
+                                label="Abonnement"
+                                onPress={() => router.push('/abonnement')}
+                            />
+                            <QuickTile
+                                tone="terracotta"
+                                icon={Images}
+                                label="Réalisations"
+                                onPress={() => router.push('/mes-realisations')}
+                            />
+                            <QuickTile
+                                tone="green"
+                                icon={Trophy}
+                                label="Ambassadeur"
+                                onPress={() => router.push('/recompenses')}
+                            />
+                        </>
+                    ) : (
+                        <>
+                            <QuickTile
+                                tone="amber"
+                                icon={Star}
+                                label="Mes favoris"
+                                onPress={() => router.push('/favoris')}
+                            />
+                            <QuickTile
+                                tone="green"
+                                icon={Trophy}
+                                label="Ambassadeur"
+                                onPress={() => router.push('/recompenses')}
+                            />
+                            <QuickTile
+                                tone="navy"
+                                icon={Wallet}
+                                label="Paiements"
+                                onPress={() => router.push('/paiements')}
+                            />
+                            <QuickTile
+                                tone="terracotta"
+                                icon={HelpCircle}
+                                label="Aide"
+                                onPress={() => router.push('/aide')}
+                            />
+                        </>
+                    )}
+                </View>
 
-                {/* Espace administration : validation des artisans et pilotage */}
-                {user?.role === 'ADMIN' && (
-                    <View style={styles.menu}>
-                        <MenuItem
-                            icon={
-                                <LayoutDashboard
-                                    size={20}
-                                    color={colors.textSecondary}
-                                    strokeWidth={2}
-                                />
-                            }
+                {/* ─── Bannière parrainage (Ambassadeur) ─── */}
+                <Pressable
+                    style={styles.ambassador}
+                    onPress={() => router.push('/recompenses')}
+                    accessibilityRole="button"
+                >
+                    <View style={styles.ambassadorIcon}>
+                        <Gift size={20} color={palette.white} strokeWidth={2} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.ambassadorTitle} numberOfLines={1}>
+                            Programme Ambassadeur
+                        </Text>
+                        <Text style={styles.ambassadorText} numberOfLines={2}>
+                            Parrainez et gagnez des jours d'abonnement offerts + un badge.
+                        </Text>
+                    </View>
+                    <Pressable onPress={shareCode} hitSlop={10} style={styles.ambassadorShare}>
+                        <Share2 size={16} color={palette.white} strokeWidth={2.2} />
+                    </Pressable>
+                </Pressable>
+
+                {/* ─── Admin ─── */}
+                {isAdmin && (
+                    <Section title="Administration">
+                        <Row
+                            tone="navy"
+                            icon={LayoutDashboard}
                             label="Administration"
                             onPress={() => router.push('/admin')}
                         />
-                    </View>
+                    </Section>
                 )}
 
-                {/* Espace pro : tout ce qui construit la fiche publique de l'artisan */}
-                {user?.role === 'ARTISAN' && (
-                    <View style={styles.menu}>
-                        <MenuItem
-                            icon={
-                                <BarChart3
-                                    size={20}
-                                    color={colors.textSecondary}
-                                    strokeWidth={2}
-                                />
-                            }
-                            label="Mon activité"
-                            onPress={() => router.push('/activite')}
-                        />
-                        <MenuItem
-                            icon={
-                                <UserRoundCog
-                                    size={20}
-                                    color={colors.textSecondary}
-                                    strokeWidth={2}
-                                />
-                            }
+                {/* ─── Espace pro (artisan) ─── */}
+                {isArtisan && (
+                    <Section title="Espace professionnel">
+                        <Row
+                            tone="navy"
+                            icon={UserRoundCog}
                             label="Profil professionnel"
                             onPress={() => router.push('/profil-pro')}
                         />
-                        <MenuItem
-                            icon={
-                                <ShieldCheck
-                                    size={20}
-                                    color={colors.textSecondary}
-                                    strokeWidth={2}
-                                />
-                            }
+                        <Row
+                            tone="green"
+                            icon={ShieldCheck}
                             label="Vérification et justificatifs"
                             onPress={() => router.push('/justificatifs')}
                         />
-                        <MenuItem
-                            icon={
-                                <Images size={20} color={colors.textSecondary} strokeWidth={2} />
-                            }
-                            label="Mes réalisations"
-                            onPress={() => router.push('/mes-realisations')}
-                        />
-                        <MenuItem
-                            icon={
-                                <Gauge size={20} color={colors.textSecondary} strokeWidth={2} />
-                            }
-                            label="Mon abonnement"
-                            onPress={() => router.push('/abonnement')}
-                        />
-                    </View>
+                    </Section>
                 )}
 
-                {/* Main-d'œuvre */}
-                <View style={styles.menu}>
-                    <MenuItem
-                        icon={<Users size={20} color={colors.textSecondary} strokeWidth={2} />}
-                        label="Chercher de la main-d'œuvre"
-                        onPress={() => router.push('/main-doeuvre')}
-                    />
-                    <MenuItem
-                        icon={<Hammer size={20} color={colors.textSecondary} strokeWidth={2} />}
-                        label="Me rendre disponible pour du travail"
+                {/* ─── Main-d'œuvre ─── */}
+                <Section title="Main-d'œuvre">
+                    {isArtisan && (
+                        <Row
+                            tone="terracotta"
+                            icon={Users}
+                            label="Chercher de la main-d'œuvre"
+                            onPress={() => router.push('/main-doeuvre')}
+                        />
+                    )}
+                    <Row
+                        tone="terracotta"
+                        icon={Hammer}
+                        label="Me rendre disponible"
+                        subtitle="Travailler comme ouvrier ou aide"
                         onPress={() => router.push('/profil-travailleur')}
                     />
-                    <MenuItem
-                        icon={<Megaphone size={20} color={colors.textSecondary} strokeWidth={2} />}
-                        label="Annonces de chantier près de moi"
+                    <Row
+                        tone="terracotta"
+                        icon={Megaphone}
+                        label="Annonces de chantier"
                         onPress={() => router.push('/annonces-chantier')}
                     />
-                </View>
+                </Section>
 
-                {/* Menu */}
-                <View style={styles.menu}>
-                    <MenuItem
-                        icon={<Wallet size={20} color={colors.textSecondary} strokeWidth={2} />}
-                        label="Mes paiements"
-                        onPress={() => router.push('/paiements')}
-                    />
-                    <MenuItem
-                        icon={<Star size={20} color={colors.textSecondary} strokeWidth={2} />}
-                        label="Mes favoris"
-                        onPress={() => router.push('/favoris')}
-                    />
-                    <MenuItem
-                        icon={<Gift size={20} color={colors.textSecondary} strokeWidth={2} />}
-                        label="Mes récompenses"
-                        onPress={() => router.push('/recompenses')}
-                    />
-                    <MenuItem
-                        icon={<Settings size={20} color={colors.textSecondary} strokeWidth={2} />}
+                {/* ─── Compte & aide ─── */}
+                <Section title="Compte & aide">
+                    {isArtisan && (
+                        <>
+                            <Row
+                                tone="navy"
+                                icon={Wallet}
+                                label="Mes paiements"
+                                onPress={() => router.push('/paiements')}
+                            />
+                            <Row
+                                tone="amber"
+                                icon={Star}
+                                label="Mes favoris"
+                                onPress={() => router.push('/favoris')}
+                            />
+                        </>
+                    )}
+                    <Row
+                        tone="navy"
+                        icon={Settings}
                         label="Paramètres du compte"
                         onPress={() => router.push('/parametres')}
                     />
-                    <MenuItem
-                        icon={<HelpCircle size={20} color={colors.textSecondary} strokeWidth={2} />}
-                        label="Aide et support"
-                        onPress={() => router.push('/aide')}
-                    />
-                </View>
+                    {isArtisan && (
+                        <Row
+                            tone="terracotta"
+                            icon={HelpCircle}
+                            label="Aide et support"
+                            onPress={() => router.push('/aide')}
+                        />
+                    )}
+                </Section>
 
-                {/* Déconnexion — séparée des actions normales */}
+                {/* Déconnexion */}
                 <Pressable onPress={confirmLogout} style={styles.logout} accessibilityRole="button">
                     <LogOut size={18} color={colors.danger} strokeWidth={2} />
                     <Text style={styles.logoutText}>Se déconnecter</Text>
@@ -273,15 +335,82 @@ function ProfileContent() {
     );
 }
 
-function MenuItem({ icon, label, onPress }: { icon: React.ReactNode; label: string; onPress?: () => void }) {
+type IconType = React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
+
+/** Tuile d'accès rapide (grille) */
+function QuickTile({
+    tone,
+    icon: Icon,
+    label,
+    onPress,
+}: {
+    tone: ChipTone;
+    icon: IconType;
+    label: string;
+    onPress?: () => void;
+}) {
+    const c = CHIP[tone];
     return (
         <Pressable
             onPress={onPress}
             accessibilityRole="button"
-            style={({ pressed }) => [styles.menuItem, pressed && { backgroundColor: colors.surfaceMuted }]}
+            accessibilityLabel={label}
+            style={({ pressed }) => [styles.tile, pressed && { transform: [{ scale: 0.98 }] }]}
         >
-            {icon}
-            <Text style={styles.menuLabel}>{label}</Text>
+            <View style={[styles.tileIcon, { backgroundColor: c.bg }]}>
+                <Icon size={20} color={c.fg} strokeWidth={2.2} />
+            </View>
+            <Text style={styles.tileLabel} numberOfLines={1} adjustsFontSizeToFit>
+                {label}
+            </Text>
+        </Pressable>
+    );
+}
+
+/** Section groupée (titre + carte) */
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+    return (
+        <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{title}</Text>
+            <View style={styles.sectionCard}>{children}</View>
+        </View>
+    );
+}
+
+/** Ligne de menu (pastille + label + sous-titre + chevron) */
+function Row({
+    tone,
+    icon: Icon,
+    label,
+    subtitle,
+    onPress,
+}: {
+    tone: ChipTone;
+    icon: IconType;
+    label: string;
+    subtitle?: string;
+    onPress?: () => void;
+}) {
+    const c = CHIP[tone];
+    return (
+        <Pressable
+            onPress={onPress}
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.row, pressed && { backgroundColor: colors.surfaceMuted }]}
+        >
+            <View style={[styles.rowIcon, { backgroundColor: c.bg }]}>
+                <Icon size={17} color={c.fg} strokeWidth={2.2} />
+            </View>
+            <View style={{ flex: 1 }}>
+                <Text style={styles.rowLabel} numberOfLines={1}>
+                    {label}
+                </Text>
+                {subtitle ? (
+                    <Text style={styles.rowSub} numberOfLines={1}>
+                        {subtitle}
+                    </Text>
+                ) : null}
+            </View>
             <ChevronRight size={18} color={colors.textMuted} strokeWidth={2} />
         </Pressable>
     );
@@ -289,39 +418,48 @@ function MenuItem({ icon, label, onPress }: { icon: React.ReactNode; label: stri
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    content: {
-        paddingHorizontal: spacing.xl,
-        paddingBottom: spacing['3xl'],
-    },
-    header: {
+    content: { paddingHorizontal: spacing.xl, paddingBottom: spacing['3xl'] },
+
+    // Identité
+    identity: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: spacing.lg,
-        paddingVertical: spacing['2xl'],
+        gap: spacing.md,
+        backgroundColor: colors.surface,
+        borderRadius: radii.xl,
+        padding: spacing.lg,
+        marginTop: spacing.lg,
+        marginBottom: spacing.lg,
+        ...shadows.card,
     },
-    nameRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.xs,
-    },
+    nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
     name: {
         fontFamily: typography.heading,
-        fontSize: fontSizes.xl,
+        fontSize: fontSizes.lg,
         color: colors.text,
         flexShrink: 1,
     },
     email: {
         fontFamily: typography.body,
-        fontSize: fontSizes.sm,
-        color: colors.textSecondary,
-        marginTop: 2,
-    },
-    role: {
-        fontFamily: typography.bodyMedium,
         fontSize: fontSizes.xs,
-        color: colors.primary,
-        marginTop: 2,
+        color: colors.textSecondary,
+        marginTop: 1,
     },
+    roleChip: {
+        alignSelf: 'flex-start',
+        backgroundColor: colors.primarySoft,
+        borderRadius: radii.full,
+        paddingHorizontal: spacing.sm,
+        paddingVertical: 2,
+        marginTop: 5,
+    },
+    roleChipTxt: {
+        fontFamily: typography.bodySemiBold,
+        fontSize: fontSizes.xs - 1,
+        color: colors.primary,
+    },
+
+    // Bannière complétion
     completeBanner: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -330,12 +468,12 @@ const styles = StyleSheet.create({
         borderRadius: radii.lg,
         borderWidth: 1,
         borderColor: palette.navy100,
-        padding: spacing.lg,
+        padding: spacing.md,
         marginBottom: spacing.lg,
     },
     completeTitle: {
         fontFamily: typography.headingMedium,
-        fontSize: fontSizes.base,
+        fontSize: fontSizes.sm,
         color: colors.primary,
     },
     completeText: {
@@ -344,74 +482,128 @@ const styles = StyleSheet.create({
         color: colors.textSecondary,
         marginTop: 1,
     },
-    referralCard: {
-        gap: spacing.sm,
-        marginBottom: spacing['2xl'],
-    },
-    referralHeader: {
+
+    // Grille d'accès rapides
+    grid: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: spacing.md,
+        marginBottom: spacing.lg,
+    },
+    tile: {
+        flexBasis: '47%',
+        flexGrow: 1,
         alignItems: 'center',
         gap: spacing.sm,
+        backgroundColor: colors.surface,
+        borderRadius: radii.lg,
+        paddingVertical: spacing.lg,
+        paddingHorizontal: spacing.sm,
+        ...shadows.card,
     },
-    referralTitle: {
-        fontFamily: typography.heading,
-        fontSize: fontSizes.md,
-        color: colors.text,
-    },
-    referralText: {
-        fontFamily: typography.body,
-        fontSize: fontSizes.sm,
-        color: colors.textSecondary,
-    },
-    codeBox: {
-        flexDirection: 'row',
+    tileIcon: {
+        width: 44,
+        height: 44,
+        borderRadius: radii.full,
         alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: colors.accentSoft,
-        borderRadius: radii.md,
-        borderWidth: 1,
-        borderColor: colors.accent,
-        borderStyle: 'dashed',
-        paddingHorizontal: spacing.lg,
-        paddingVertical: spacing.md,
-        marginTop: spacing.xs,
+        justifyContent: 'center',
     },
-    codeText: {
-        fontFamily: typography.heading,
-        fontSize: fontSizes.lg,
-        letterSpacing: 2,
-        color: colors.accentPressed,
-    },
-    codeShare: {
+    tileLabel: {
         fontFamily: typography.bodySemiBold,
         fontSize: fontSizes.sm,
-        color: colors.accent,
+        color: colors.text,
     },
-    menu: {
+
+    // Bannière Ambassadeur
+    ambassador: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.md,
+        backgroundColor: colors.primary,
+        borderRadius: radii.lg,
+        padding: spacing.lg,
+        marginBottom: spacing['2xl'],
+    },
+    ambassadorIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: radii.full,
+        backgroundColor: 'rgba(255,255,255,0.16)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    ambassadorTitle: {
+        fontFamily: typography.bodyBold,
+        fontSize: fontSizes.base,
+        color: palette.white,
+    },
+    ambassadorText: {
+        fontFamily: typography.body,
+        fontSize: fontSizes.xs,
+        lineHeight: fontSizes.xs + 5,
+        color: 'rgba(255,255,255,0.85)',
+        marginTop: 1,
+    },
+    ambassadorShare: {
+        width: 34,
+        height: 34,
+        borderRadius: radii.full,
+        backgroundColor: 'rgba(255,255,255,0.16)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+    // Sections
+    section: { marginBottom: spacing.lg },
+    sectionTitle: {
+        fontFamily: typography.bodySemiBold,
+        fontSize: fontSizes.xs,
+        letterSpacing: 0.5,
+        textTransform: 'uppercase',
+        color: colors.textMuted,
+        marginBottom: spacing.sm,
+        marginLeft: spacing.xs,
+    },
+    sectionCard: {
         backgroundColor: colors.surface,
         borderRadius: radii.lg,
         overflow: 'hidden',
         ...shadows.card,
     },
-    menuItem: {
+    row: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.md,
-        paddingHorizontal: spacing.lg,
-        height: 54,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.sm + 2,
+        minHeight: 56,
     },
-    menuLabel: {
-        flex: 1,
+    rowIcon: {
+        width: 34,
+        height: 34,
+        borderRadius: radii.md,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    rowLabel: {
         fontFamily: typography.bodyMedium,
         fontSize: fontSizes.base,
         color: colors.text,
     },
+    rowSub: {
+        fontFamily: typography.body,
+        fontSize: fontSizes.xs,
+        color: colors.textSecondary,
+        marginTop: 1,
+    },
+
+    // Déconnexion
     logout: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: spacing.sm,
-        marginTop: spacing['3xl'],
+        marginTop: spacing.lg,
         padding: spacing.md,
     },
     logoutText: {

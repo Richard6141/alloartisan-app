@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     View,
     Text,
@@ -9,23 +9,23 @@ import {
     Platform,
     Switch,
     Alert,
-    ActivityIndicator,
     TextInput,
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Camera, LocateFixed, Star, MapPin, Clock3 } from 'lucide-react-native';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, Camera, LocateFixed, Star, MapPin, Clock3, Plus } from 'lucide-react-native';
 import { LiveMap } from '../components/LiveMap';
+import { SuggestMetierSheet } from '../components/SuggestMetierSheet';
 import { api, ApiError } from '../lib/api';
 import { queryKeys } from '../lib/queryClient';
 import { suppressLock } from '../lib/lockGuard';
 import { resolvePosition } from '../lib/geo';
 import { useAuth } from '../stores/auth';
 import { LoginInvite } from '../components/LoginInvite';
-import { Button, Input, Card, Skeleton } from '../components/ui';
+import { Button, Input, Card, Skeleton, Spinner } from '../components/ui';
 import {
     useMyArtisanProfile,
     useUpdateArtisanProfile,
@@ -94,6 +94,8 @@ function ProfilProContent() {
     const { data: me, isLoading } = useMyArtisanProfile();
     const updateProfile = useUpdateArtisanProfile();
     const updateMetiers = useUpdateArtisanMetiers();
+    const queryClient = useQueryClient();
+    const [suggestOpen, setSuggestOpen] = useState(false);
 
     const { data: metiersDispo } = useQuery({
         queryKey: queryKeys.metiers,
@@ -235,6 +237,34 @@ function ProfilProContent() {
         );
     };
 
+    // Catégories proposées dans la feuille de suggestion (dérivées des métiers)
+    const categories = useMemo(() => {
+        const map = new Map<string, { id: string; nom: string }>();
+        (metiersDispo ?? []).forEach((m) => {
+            if (m.categorie) map.set(m.categorie.id, { id: m.categorie.id, nom: m.categorie.nom });
+        });
+        return Array.from(map.values());
+    }, [metiersDispo]);
+
+    // Métier suggéré : l'ajouter à la liste disponible et le sélectionner
+    const handleMetierCreated = (m: Metier) => {
+        queryClient.setQueryData<Metier[]>(queryKeys.metiers, (prev) => {
+            const list = prev ?? [];
+            return list.some((x) => x.id === m.id) ? list : [...list, m];
+        });
+        setMetiersSel((prev) => {
+            if (prev.some((x) => x.metierId === m.id)) return prev;
+            if (prev.length >= 3) {
+                Alert.alert(
+                    'Trois métiers maximum',
+                    'Votre métier a été proposé. Retirez-en un pour l’ajouter à votre fiche.',
+                );
+                return prev;
+            }
+            return [...prev, { metierId: m.id, nom: m.nom, estPrincipal: prev.length === 0 }];
+        });
+    };
+
     // ─── Horaires ─────────────────────────────────────────────────────────────
     const setJour = (jour: string, patch: Partial<HoraireTravail>) => {
         setHoraires((prev) => prev.map((h) => (h.jour === jour ? { ...h, ...patch } : h)));
@@ -334,7 +364,7 @@ function ProfilProContent() {
                         )}
                         <View style={styles.coverBadge}>
                             {uploading === 'couverture' ? (
-                                <ActivityIndicator size="small" color={colors.onPrimary} />
+                                <Spinner size={18} color={colors.onPrimary} />
                             ) : (
                                 <Camera size={15} color={colors.onPrimary} strokeWidth={2.2} />
                             )}
@@ -355,7 +385,7 @@ function ProfilProContent() {
                         )}
                         {uploading === 'profil' && (
                             <View style={styles.avatarLoading}>
-                                <ActivityIndicator size="small" color={colors.onPrimary} />
+                                <Spinner size={18} color={colors.onPrimary} />
                             </View>
                         )}
                     </Pressable>
@@ -487,6 +517,16 @@ function ProfilProContent() {
                             </Pressable>
                         );
                     })}
+                    {/* Filet de sécurité : liste non exhaustive */}
+                    <Pressable
+                        onPress={() => setSuggestOpen(true)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Mon métier n'est pas dans la liste"
+                        style={styles.suggestChip}
+                    >
+                        <Plus size={14} color={colors.primary} strokeWidth={2.4} />
+                        <Text style={styles.suggestChipText}>Métier absent&nbsp;?</Text>
+                    </Pressable>
                 </View>
                 {metiersSel.length > 0 && (
                     <Card style={{ gap: spacing.sm }}>
@@ -601,6 +641,13 @@ function ProfilProContent() {
                     </Text>
                 </View>
             </ScrollView>
+
+            <SuggestMetierSheet
+                visible={suggestOpen}
+                onClose={() => setSuggestOpen(false)}
+                categories={categories}
+                onCreated={handleMetierCreated}
+            />
         </KeyboardAvoidingView>
     );
 }
@@ -770,6 +817,23 @@ const styles = StyleSheet.create({
         fontFamily: typography.bodyMedium,
         fontSize: fontSizes.xs,
         color: colors.textSecondary,
+    },
+    suggestChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        paddingHorizontal: spacing.md,
+        height: 36,
+        borderRadius: radii.full,
+        backgroundColor: colors.primarySoft,
+        borderWidth: 1,
+        borderColor: colors.primary,
+        borderStyle: 'dashed',
+    },
+    suggestChipText: {
+        fontFamily: typography.bodySemiBold,
+        fontSize: fontSizes.xs,
+        color: colors.primary,
     },
     metierRow: {
         flexDirection: 'row',

@@ -38,6 +38,37 @@ export function useArtisanAvis(artisanId: string, limit = 10) {
     });
 }
 
+export type RaisonSignalement = 'CONTENU_INAPPROPRIE' | 'FAUX_AVIS' | 'HARCELEMENT' | 'AUTRE';
+
+/** Réponse de l'artisan à un avis reçu */
+export function useRespondAvis(artisanId: string) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ avisId, reponse }: { avisId: string; reponse: string }) => {
+            await api.patch(`/avis/${avisId}/response`, { reponse });
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.artisan(artisanId) });
+        },
+    });
+}
+
+/** Signaler un avis abusif (tout utilisateur connecté) */
+export function useReportAvis() {
+    return useMutation({
+        mutationFn: async (input: {
+            avisId: string;
+            raison: RaisonSignalement;
+            details?: string;
+        }) => {
+            await api.post(`/avis/${input.avisId}/report`, {
+                raison: input.raison,
+                details: input.details,
+            });
+        },
+    });
+}
+
 /** Réponse du déblocage d'une conversation (paywall artisan) */
 export interface UnlockResult {
     verrouille: boolean;

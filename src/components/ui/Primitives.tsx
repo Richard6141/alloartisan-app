@@ -8,6 +8,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { WifiOff } from 'lucide-react-native';
 import { Image } from 'expo-image';
+import { optimizedImage } from '../../lib/image';
 import { useIsRestoring } from '@tanstack/react-query';
 import { onlineManager } from '@tanstack/react-query';
 import {
@@ -82,10 +83,11 @@ export function Avatar({
         .join('');
 
     if (uri) {
-        // expo-image gère le cache disque automatiquement
+        // Cloudinary redimensionne à la taille de l'avatar (bien plus léger)
+        // et expo-image gère le cache disque automatiquement.
         return (
             <Image
-                source={{ uri }}
+                source={{ uri: optimizedImage(uri, { width: size, height: size, face: true }) }}
                 style={{ width: size, height: size, borderRadius: size / 2 }}
                 cachePolicy="memory-disk"
                 transition={150}

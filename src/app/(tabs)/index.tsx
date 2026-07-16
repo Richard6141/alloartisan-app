@@ -287,26 +287,33 @@ export default function HomeScreen() {
                     </Pressable>
                 </View>
 
-                {/* ─── Main-d'œuvre (patron ↔ ouvriers/aides) ─── */}
-                <Pressable
-                    onPress={() => router.push('/main-doeuvre')}
-                    style={({ pressed }) => [styles.moCard, pressed && { transform: [{ scale: 0.99 }] }]}
-                    accessibilityRole="button"
-                    accessibilityLabel="Trouver de la main-d'œuvre pour un chantier"
-                >
-                    <View style={[styles.bigActionIcon, { backgroundColor: palette.terracotta600 }]}>
-                        <Hammer size={15} color={palette.white} strokeWidth={2.2} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                        <Text style={styles.bigActionTitle} numberOfLines={1}>
-                            Besoin de renfort sur un chantier ?
-                        </Text>
-                        <Text style={styles.bigActionText} numberOfLines={1}>
-                            Trouvez un ouvrier ou une aide près de vous
-                        </Text>
-                    </View>
-                    <ChevronRight size={17} color={colors.textMuted} strokeWidth={2.2} />
-                </Pressable>
+                {/* ─── Main-d'œuvre : réservé aux ARTISANS (renfort de chantier) ─── */}
+                {user?.role === 'ARTISAN' && (
+                    <Pressable
+                        onPress={() => router.push('/main-doeuvre')}
+                        style={({ pressed }) => [
+                            styles.moCard,
+                            pressed && { transform: [{ scale: 0.99 }] },
+                        ]}
+                        accessibilityRole="button"
+                        accessibilityLabel="Trouver de la main-d'œuvre pour un chantier"
+                    >
+                        <View
+                            style={[styles.bigActionIcon, { backgroundColor: palette.terracotta600 }]}
+                        >
+                            <Hammer size={15} color={palette.white} strokeWidth={2.2} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.bigActionTitle} numberOfLines={1}>
+                                Besoin de renfort sur un chantier ?
+                            </Text>
+                            <Text style={styles.bigActionText} numberOfLines={1}>
+                                Trouvez un ouvrier ou une aide près de vous
+                            </Text>
+                        </View>
+                        <ChevronRight size={17} color={colors.textMuted} strokeWidth={2.2} />
+                    </Pressable>
+                )}
 
                 {/* ─── Par métier ─── */}
                 <SectionTitle

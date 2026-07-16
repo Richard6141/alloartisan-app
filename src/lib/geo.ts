@@ -55,9 +55,32 @@ async function nominatimReverse(latitude: number, longitude: number): Promise<Li
     }
 }
 
+/** Arrondi ~100 m : assez précis pour les distances, stable pour le cache serveur. */
+function arrondir(coords: { latitude: number; longitude: number }) {
+    return {
+        latitude: Math.round(coords.latitude * 1000) / 1000,
+        longitude: Math.round(coords.longitude * 1000) / 1000,
+    };
+}
+
+/** Dernière position connue si elle est assez récente (quasi instantané). */
+async function positionEnCache(): Promise<{ latitude: number; longitude: number } | null> {
+    try {
+        const last = await Location.getLastKnownPositionAsync({
+            maxAge: 3 * 60 * 1000, // ≤ 3 min
+            requiredAccuracy: 1000, // ≤ 1 km : suffisant pour ville / rayon de recherche
+        });
+        return last ? arrondir(last.coords) : null;
+    } catch {
+        return null;
+    }
+}
+
 /**
- * Coordonnées seules, sans géocodage (rapide, hors ligne OK), arrondies à
- * ~100 m : assez précis pour des distances, stable pour le cache serveur.
+ * Coordonnées seules, sans géocodage (rapide, hors ligne OK).
+ * OPTIMISATION VITESSE : on renvoie d'abord la DERNIÈRE POSITION CONNUE
+ * (instantanée) ; on ne déclenche un vrai relevé GPS (plus lent) que s'il n'y
+ * a pas de cache récent. Pour un champ « ville » ou un rayon, c'est parfait.
  */
 export async function resolveCoords(options?: {
     request?: boolean;
@@ -68,13 +91,14 @@ export async function resolveCoords(options?: {
             granted = (await Location.requestForegroundPermissionsAsync()).granted;
         }
         if (!granted) return null;
+
+        const cache = await positionEnCache();
+        if (cache) return cache;
+
         const pos = await Location.getCurrentPositionAsync({
             accuracy: Location.Accuracy.Balanced,
         });
-        return {
-            latitude: Math.round(pos.coords.latitude * 1000) / 1000,
-            longitude: Math.round(pos.coords.longitude * 1000) / 1000,
-        };
+        return arrondir(pos.coords);
     } catch {
         return null;
     }
@@ -91,20 +115,25 @@ export async function resolvePosition(options?: {
         }
         if (!granted) return null;
 
-        const pos = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-        });
+        // Vitesse : dernière position connue si récente, sinon vrai relevé
+        let coords = await positionEnCache();
+        if (!coords) {
+            const pos = await Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.Balanced,
+            });
+            coords = arrondir(pos.coords);
+        }
 
         // Les deux géocodeurs en parallèle : OSM pour la précision des
         // quartiers, celui du téléphone comme repli (et pour la ville)
         const [osm, [place]] = await Promise.all([
-            nominatimReverse(pos.coords.latitude, pos.coords.longitude),
-            Location.reverseGeocodeAsync(pos.coords).catch(() => [] as Location.LocationGeocodedAddress[]),
+            nominatimReverse(coords.latitude, coords.longitude),
+            Location.reverseGeocodeAsync(coords).catch(() => [] as Location.LocationGeocodedAddress[]),
         ]);
 
         return {
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
+            latitude: coords.latitude,
+            longitude: coords.longitude,
             ville: place?.city ?? osm?.ville ?? place?.subregion ?? null,
             // Mieux vaut un champ vide qu'un mauvais quartier : pas de repli
             // sur le nom de rue

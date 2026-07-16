@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -16,11 +16,16 @@ import { AppState, BackHandler, View, StyleSheet } from 'react-native';
 import { queryClient, asyncStoragePersister, setupOnlineManagement } from '../lib/queryClient';
 import { prefsStorage } from '../lib/storage';
 import { isLockSuppressed, clearLockSuppression } from '../lib/lockGuard';
-import { registerForPush, useNotificationTapRouting } from '../lib/push';
+import {
+    registerForPush,
+    useNotificationTapRouting,
+    consumeInitialNotification,
+} from '../lib/push';
 import { useAuth } from '../stores/auth';
 import { useChatPrefs } from '../stores/chatPrefs';
 import { OfflineBanner } from '../components/ui';
 import { LockScreen } from '../components/LockScreen';
+import { AnimatedSplash } from '../components/AnimatedSplash';
 import { RealtimeBridge } from '../components/RealtimeBridge';
 import { colors } from '../theme/tokens';
 
@@ -37,6 +42,7 @@ export default function RootLayout() {
     const status = useAuth((s) => s.status);
     const hydrate = useAuth((s) => s.hydrate);
     const router = useRouter();
+    const [splashGone, setSplashGone] = useState(false);
 
     useEffect(() => {
         void hydrate();
@@ -92,16 +98,25 @@ export default function RootLayout() {
         if (status === 'authenticated') void registerForPush();
     }, [status]);
 
-    // Tap sur une notification (app en arrière-plan / fermée) → écran concerné
+    // Tap sur une notification (app ouverte / en arrière-plan) → écran concerné
     useEffect(() => useNotificationTapRouting(router), [router]);
 
+    // App lancée À FROID par un tap sur une notification : router une fois prêt
     useEffect(() => {
-        if (fontsLoaded && status !== 'loading') {
+        if (status === 'authenticated') void consumeInitialNotification(router);
+    }, [status, router]);
+
+    // Dès que les polices sont prêtes, on masque le splash NATIF : notre splash
+    // animé (même fond navy) prend le relais sans coupure et gère la suite.
+    useEffect(() => {
+        if (fontsLoaded) {
             void SplashScreen.hideAsync();
         }
-    }, [fontsLoaded, status]);
+    }, [fontsLoaded]);
 
-    if (!fontsLoaded || status === 'loading') return null;
+    // On a besoin des polices pour rendre le moindre texte. L'hydratation de
+    // l'auth ('loading'), elle, se déroule DERRIÈRE le splash animé.
+    if (!fontsLoaded) return null;
 
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
@@ -127,6 +142,15 @@ export default function RootLayout() {
                     <View style={StyleSheet.absoluteFill} pointerEvents="auto">
                         <LockScreen />
                     </View>
+                )}
+
+                {/* Splash animé par-dessus tout : joue le logo pendant
+                    l'hydratation, puis disparaît en fondu. */}
+                {!splashGone && (
+                    <AnimatedSplash
+                        appReady={status !== 'loading'}
+                        onFinish={() => setSplashGone(true)}
+                    />
                 )}
             </PersistQueryClientProvider>
         </GestureHandlerRootView>

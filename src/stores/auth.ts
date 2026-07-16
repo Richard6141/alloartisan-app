@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { router } from 'expo-router';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { api, setSessionExpiredHandler } from '../lib/api';
 import { tokenStorage, prefsStorage } from '../lib/storage';
@@ -28,11 +29,13 @@ interface AuthState {
     /** Reverrouille l'app (retour en avant-plan avec empreinte activée) */
     lock: () => void;
     completeOnboarding: () => Promise<void>;
+    /** Supprime définitivement le compte (mot de passe requis) */
+    deleteAccount: (password: string) => Promise<void>;
     login: (email: string, password: string) => Promise<void>;
     register: (payload: { email: string; password: string; role: 'CLIENT' | 'ARTISAN' }) => Promise<void>;
     verifyOtp: (email: string, code: string) => Promise<void>;
     refreshUser: () => Promise<void>;
-    logout: () => Promise<void>;
+    logout: (revokeServer?: boolean) => Promise<void>;
 }
 
 export const useAuth = create<AuthState>((set, get) => ({
@@ -42,7 +45,19 @@ export const useAuth = create<AuthState>((set, get) => ({
     /** Au démarrage : onboarding vu ? token valide ? profil chargeable ? */
     async hydrate() {
         setSessionExpiredHandler(() => {
-            void get().logout();
+            // Session déjà invalide côté serveur : inutile d'appeler /auth/logout
+            // (et on évite ainsi toute boucle 401 → refresh → logout). On nettoie
+            // puis on REDIRIGE vers la connexion — sinon l'utilisateur reste sur
+            // son écran avec une erreur « Session expirée » sans pouvoir agir.
+            void get()
+                .logout(false)
+                .then(() => {
+                    try {
+                        router.replace('/(auth)/login');
+                    } catch {
+                        // navigation pas prête (démarrage) : le statut 'guest' suffit
+                    }
+                });
         });
 
         const seen = await prefsStorage.hasSeenOnboarding();
@@ -134,7 +149,28 @@ export const useAuth = create<AuthState>((set, get) => ({
         set({ user: data });
     },
 
-    async logout() {
+    async logout(revokeServer = true) {
+        await unregisterForPush();
+        // Révoquer la session côté serveur (refresh token) tant que le token
+        // d'accès est encore présent. Non bloquant : hors ligne / token expiré
+        // → on nettoie quand même localement.
+        if (revokeServer) {
+            try {
+                await api.post('/auth/logout');
+            } catch {
+                // ignoré : la déconnexion locale prime
+            }
+        }
+        await tokenStorage.clear();
+        closeSockets();
+        queryClient.clear();
+        set({ status: 'guest', user: null });
+    },
+
+    async deleteAccount(password: string) {
+        // Le serveur exige le mot de passe (vérifié en argon) puis anonymise
+        // + soft-delete le compte. Ensuite on nettoie la session localement.
+        await api.delete('/users/me', { data: { password } });
         await unregisterForPush();
         await tokenStorage.clear();
         closeSockets();

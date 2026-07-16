@@ -28,6 +28,7 @@ import {
     LockOpen,
     Maximize2,
     ShieldAlert,
+    Sparkles,
     Star,
     X,
 } from 'lucide-react-native';
@@ -43,8 +44,11 @@ import {
     useRejectArtisan,
     useVerifyCertification,
     useUnlockCertification,
+    usePendingMetiers,
+    useValidateMetier,
     type AdminCertification,
     type PendingArtisan,
+    type PendingMetier,
 } from '../../features/admin/hooks';
 import { colors, palette, spacing, typography, fontSizes, lineHeights, radii } from '../../theme/tokens';
 
@@ -95,6 +99,8 @@ export default function ValidationsScreen() {
 function ValidationsContent() {
     const { data: artisans, isLoading, refetch, isRefetching } = usePendingArtisans();
     const { data: certifications, refetch: refetchCerts } = usePendingCertifications();
+    const { data: pendingMetiers, refetch: refetchMetiers } = usePendingMetiers();
+    const validateMetier = useValidateMetier();
     const verifyArtisan = useVerifyArtisan();
     const rejectArtisan = useRejectArtisan();
     const verifyCertification = useVerifyCertification();
@@ -182,6 +188,23 @@ function ValidationsContent() {
         );
     };
 
+    const validerMetier = (m: PendingMetier) => {
+        Alert.alert(
+            'Valider ce métier ?',
+            `« ${m.nom} » (${m.categorie.nom}) deviendra visible de tous les clients et sélectionnable par les artisans.`,
+            [
+                { text: 'Annuler', style: 'cancel' },
+                {
+                    text: 'Valider',
+                    onPress: () =>
+                        validateMetier.mutate(m.id, {
+                            onError: (e) => erreur(e, 'Validation impossible'),
+                        }),
+                },
+            ],
+        );
+    };
+
     const validerDocument = (certification: AdminCertification) => {
         verifyCertification.mutate(
             { certificationId: certification.id, verifie: true },
@@ -239,6 +262,7 @@ function ValidationsContent() {
                         onRefresh={() => {
                             void refetch();
                             void refetchCerts();
+                            void refetchMetiers();
                         }}
                         tintColor={colors.primary}
                     />
@@ -351,6 +375,57 @@ function ValidationsContent() {
                                 />
                             </Card>
                         ))}
+                    </>
+                )}
+
+                {/* Métiers suggérés par des artisans, à valider */}
+                {(pendingMetiers?.length ?? 0) > 0 && (
+                    <>
+                        <Text style={styles.sectionTitle}>
+                            Métiers suggérés ({pendingMetiers!.length})
+                        </Text>
+                        {pendingMetiers!.map((m) => {
+                            const nbArtisans = m._count?.artisanMetiers ?? 0;
+                            return (
+                                <Card key={m.id} style={styles.metierSuggereCard}>
+                                    <View style={styles.metierSuggereIcon}>
+                                        <Sparkles
+                                            size={16}
+                                            color={colors.primary}
+                                            strokeWidth={2.2}
+                                        />
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.metierSuggereNom} numberOfLines={2}>
+                                            {m.nom}
+                                        </Text>
+                                        <Text style={styles.metierSuggereMeta} numberOfLines={1}>
+                                            {m.categorie.nom}
+                                            {nbArtisans > 0
+                                                ? ` · ${nbArtisans} artisan${nbArtisans > 1 ? 's' : ''}`
+                                                : ''}
+                                        </Text>
+                                    </View>
+                                    <Button
+                                        title="Valider"
+                                        size="sm"
+                                        icon={
+                                            <Check
+                                                size={14}
+                                                color={colors.onPrimary}
+                                                strokeWidth={2.6}
+                                            />
+                                        }
+                                        loading={
+                                            validateMetier.isPending &&
+                                            validateMetier.variables === m.id
+                                        }
+                                        disabled={validateMetier.isPending}
+                                        onPress={() => validerMetier(m)}
+                                    />
+                                </Card>
+                            );
+                        })}
                     </>
                 )}
             </ScrollView>
@@ -866,6 +941,31 @@ const styles = StyleSheet.create({
         fontFamily: typography.bodySemiBold,
         fontSize: fontSizes.xs,
         color: colors.textSecondary,
+    },
+    metierSuggereCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.md,
+        padding: spacing.md,
+    },
+    metierSuggereIcon: {
+        width: 34,
+        height: 34,
+        borderRadius: radii.full,
+        backgroundColor: colors.primarySoft,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    metierSuggereNom: {
+        fontFamily: typography.bodyBold,
+        fontSize: fontSizes.sm,
+        color: colors.text,
+    },
+    metierSuggereMeta: {
+        fontFamily: typography.body,
+        fontSize: fontSizes.xs,
+        color: colors.textSecondary,
+        marginTop: 2,
     },
     modalBackdrop: {
         flex: 1,

@@ -151,9 +151,35 @@ function buildHtml(center: MapPoint): string {
     return L.divIcon({ className: '', html: '<div class="' + className + '"></div>', iconSize: [22, 22], iconAnchor: [11, 11] });
   }
 
-  var artisanMarker = null, destMarker = null, pointMarker = null, routeLine = null;
+  var artisanMarker = null, destMarker = null, pointMarker = null;
+  var routeLine = null, straightLine = null, lastRouteKey = '';
   var proLayer = L.layerGroup().addTo(map);
   var lastMarkersKey = '';
+
+  // Ligne droite « à vol d'oiseau » (repli si le routing échoue)
+  function drawStraight(a, d) {
+    if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+    if (!straightLine) {
+      straightLine = L.polyline([a, d], { color: '#1E3A8A', weight: 3, dashArray: '8 6' }).addTo(map);
+    } else { straightLine.setLatLngs([a, d]); }
+    map.fitBounds([a, d], { padding: [60, 60] });
+  }
+
+  // Vraie route routière via OSRM (serveur public gratuit, sans clé).
+  function drawRoadRoute(a, d) {
+    var url = 'https://router.project-osrm.org/route/v1/driving/'
+      + a[1] + ',' + a[0] + ';' + d[1] + ',' + d[0]
+      + '?overview=full&geometries=geojson';
+    fetch(url).then(function (r) { return r.json(); }).then(function (j) {
+      if (j && j.routes && j.routes[0] && j.routes[0].geometry) {
+        var coords = j.routes[0].geometry.coordinates.map(function (c) { return [c[1], c[0]]; });
+        if (straightLine) { map.removeLayer(straightLine); straightLine = null; }
+        if (routeLine) { map.removeLayer(routeLine); }
+        routeLine = L.polyline(coords, { color: '#1E3A8A', weight: 5, opacity: 0.85 }).addTo(map);
+        map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
+      } else { drawStraight(a, d); }
+    }).catch(function () { drawStraight(a, d); });
+  }
 
   window.updateMap = function (state) {
     try {
@@ -210,10 +236,12 @@ function buildHtml(center: MapPoint): string {
       }
 
       if (state.artisan && state.destination) {
-        var pts = [[state.artisan.latitude, state.artisan.longitude], [state.destination.latitude, state.destination.longitude]];
-        if (!routeLine) { routeLine = L.polyline(pts, { color: '#1E3A8A', weight: 3, dashArray: '8 6' }).addTo(map); }
-        else { routeLine.setLatLngs(pts); }
-        map.fitBounds(pts, { padding: [60, 60] });
+        var a = [state.artisan.latitude, state.artisan.longitude];
+        var d = [state.destination.latitude, state.destination.longitude];
+        // Ne recalculer la route que si l'artisan a bougé notablement (~100 m)
+        // ou si la destination change — évite de marteler le serveur OSRM.
+        var key = a[0].toFixed(3) + ',' + a[1].toFixed(3) + ';' + d[0].toFixed(4) + ',' + d[1].toFixed(4);
+        if (key !== lastRouteKey) { lastRouteKey = key; drawRoadRoute(a, d); }
       } else if (state.artisan) {
         map.setView([state.artisan.latitude, state.artisan.longitude], 16);
       } else if (state.destination && !state.point) {
