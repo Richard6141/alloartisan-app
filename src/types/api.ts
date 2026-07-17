@@ -76,6 +76,8 @@ export interface ArtisanSummary {
     disponible: boolean;
     verified: boolean;
     accepteUrgences: boolean;
+    /** Temps de réponse moyen à une demande, en minutes (réactivité) */
+    tempsReponseMinutes?: number | null;
     abonnementType: AbonnementType;
     /** Badge Ambassadeur (programme de parrainage) */
     ambassadeurNiveau?: 'BRONZE' | 'ARGENT' | 'OR' | null;

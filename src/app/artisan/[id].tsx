@@ -14,7 +14,9 @@ import {
     Zap,
     CalendarCheck,
     Medal,
+    Clock3,
 } from 'lucide-react-native';
+import { formatTempsReponse } from '../../lib/reactivite';
 import { useQuery } from '@tanstack/react-query';
 import { useArtisan, useArtisanAvis, useStartConversation } from '../../features/artisans/hooks';
 import { AvisItem } from '../../features/artisans/AvisItem';
@@ -247,6 +249,27 @@ export default function ArtisanDetailScreen() {
                             <Text style={styles.statLabel}>ans d'exp.</Text>
                         </View>
                     </View>
+
+                    {/* Réactivité + disponibilité — signaux de confiance qui
+                        rassurent le client et poussent à la prise de contact */}
+                    {(artisan.disponible || formatTempsReponse(artisan.tempsReponseMinutes)) && (
+                        <View style={styles.trustRow}>
+                            {artisan.disponible && (
+                                <View style={styles.trustChip}>
+                                    <View style={styles.onlineDot} />
+                                    <Text style={styles.trustChipText}>Disponible maintenant</Text>
+                                </View>
+                            )}
+                            {formatTempsReponse(artisan.tempsReponseMinutes) && (
+                                <View style={styles.trustChip}>
+                                    <Clock3 size={12} color={palette.green700} strokeWidth={2.4} />
+                                    <Text style={styles.trustChipText}>
+                                        Répond en {formatTempsReponse(artisan.tempsReponseMinutes)}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                    )}
 
                     {/* PIVOT PROXIMITÉ : jamais de tarif affiché, le prix se
                         négocie directement (contexte béninois) */}
@@ -577,6 +600,32 @@ const styles = StyleSheet.create({
         fontFamily: typography.body,
         fontSize: fontSizes.xs - 1,
         color: colors.textSecondary,
+    },
+    trustRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: spacing.sm,
+        marginTop: spacing.md,
+    },
+    trustChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        backgroundColor: colors.successSoft,
+        borderRadius: radii.full,
+        paddingHorizontal: spacing.md,
+        paddingVertical: 5,
+    },
+    trustChipText: {
+        fontFamily: typography.bodySemiBold,
+        fontSize: fontSizes.xs,
+        color: palette.green700,
+    },
+    onlineDot: {
+        width: 8,
+        height: 8,
+        borderRadius: radii.full,
+        backgroundColor: palette.green600,
     },
     priceStrip: {
         flexDirection: 'row',

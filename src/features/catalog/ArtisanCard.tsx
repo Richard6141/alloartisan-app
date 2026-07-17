@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Star, BadgeCheck, Zap, MapPin, Medal } from 'lucide-react-native';
+import { Star, BadgeCheck, Zap, MapPin, Medal, Clock3 } from 'lucide-react-native';
 import { Avatar } from '../../components/ui';
+import { formatTempsReponse } from '../../lib/reactivite';
 import type { ArtisanSummary } from '../../types/api';
 
 const AMBASSADEUR_COLOR: Record<'BRONZE' | 'ARGENT' | 'OR', string> = {
@@ -45,6 +46,7 @@ export function ArtisanCard({
         artisan.metiers?.[0]?.metier.nom;
     const isGold = artisan.abonnementType === 'GOLD';
     const isPremium = isGold || artisan.abonnementType === 'PREMIUM';
+    const reponse = formatTempsReponse(artisan.tempsReponseMinutes);
 
     return (
         <Pressable
@@ -106,6 +108,14 @@ export function ArtisanCard({
                             ({artisan.nombreAvis}) · {artisan.villePrincipale}
                         </Text>
                     </View>
+                    {reponse && (
+                        <View style={styles.reponseRow}>
+                            <Clock3 size={10} color={palette.green600} strokeWidth={2.4} />
+                            <Text style={styles.reponseText} numberOfLines={1}>
+                                Répond en {reponse}
+                            </Text>
+                        </View>
+                    )}
                 </View>
 
                 {/* Proximité + urgences — la colonne de décision */}
@@ -234,6 +244,17 @@ const styles = StyleSheet.create({
         fontSize: fontSizes.xs,
         color: colors.textMuted,
         flexShrink: 1,
+    },
+    reponseRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 3,
+        marginTop: 2,
+    },
+    reponseText: {
+        fontFamily: typography.bodySemiBold,
+        fontSize: fontSizes.xs - 1,
+        color: palette.green700,
     },
     right: {
         alignItems: 'flex-end',
