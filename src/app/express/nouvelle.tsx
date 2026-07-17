@@ -73,6 +73,58 @@ export default function NouvelleDemandeExpressScreen() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    const lancer = (rayonKm?: number) => {
+        if (!metierId || !coords) return;
+        creer.mutate(
+            {
+                metierId,
+                titre: titre.trim(),
+                description: description.trim(),
+                adresseIntervention: ville.trim() || 'À proximité',
+                latitude: coords.latitude,
+                longitude: coords.longitude,
+                estUrgent: urgent,
+                ...(rayonKm ? { rayonKm } : {}),
+            },
+            {
+                onSuccess: (demande) => {
+                    router.replace({ pathname: '/express/[id]', params: { id: demande.id } });
+                },
+                onError: (e) => {
+                    const status = e instanceof ApiError ? e.status : 0;
+                    const msg = e instanceof ApiError ? e.message : 'Réessayez plus tard.';
+                    // 404 = aucun artisan dans le rayon → proposer d'ÉLARGIR ou de chercher soi-même
+                    if (status === 404) {
+                        const prochain = !rayonKm ? 25 : rayonKm < 50 ? 50 : null;
+                        const boutons: Parameters<typeof Alert.alert>[2] = [
+                            { text: 'Fermer', style: 'cancel' },
+                            {
+                                text: 'Chercher moi-même',
+                                onPress: () =>
+                                    router.replace({
+                                        pathname: '/(tabs)/recherche',
+                                        params: {
+                                            urgence: urgent ? '1' : undefined,
+                                            metierId: metierId ?? undefined,
+                                        },
+                                    }),
+                            },
+                        ];
+                        if (prochain) {
+                            boutons.push({
+                                text: `Élargir à ${prochain} km`,
+                                onPress: () => lancer(prochain),
+                            });
+                        }
+                        Alert.alert('Aucun artisan tout près', msg, boutons);
+                    } else {
+                        Alert.alert('Demande impossible', msg);
+                    }
+                },
+            },
+        );
+    };
+
     const submit = () => {
         if (!metierId) {
             Alert.alert('Métier requis', 'Choisissez le type d’artisan dont vous avez besoin.');
@@ -93,37 +145,7 @@ export default function NouvelleDemandeExpressScreen() {
             );
             return;
         }
-        creer.mutate(
-            {
-                metierId,
-                titre: titre.trim(),
-                description: description.trim(),
-                adresseIntervention: ville.trim() || 'À proximité',
-                latitude: coords.latitude,
-                longitude: coords.longitude,
-                estUrgent: urgent,
-            },
-            {
-                onSuccess: (demande) => {
-                    router.replace({ pathname: '/express/[id]', params: { id: demande.id } });
-                },
-                onError: (e) => {
-                    // Pas d'artisan dispo → proposer la recherche manuelle
-                    const msg = e instanceof ApiError ? e.message : 'Réessayez plus tard.';
-                    Alert.alert('Demande impossible', msg, [
-                        { text: 'Fermer', style: 'cancel' },
-                        {
-                            text: 'Chercher moi-même',
-                            onPress: () =>
-                                router.replace({
-                                    pathname: '/(tabs)/recherche',
-                                    params: { urgence: urgent ? '1' : undefined, metierId: metierId ?? undefined },
-                                }),
-                        },
-                    ]);
-                },
-            },
-        );
+        lancer();
     };
 
     return (

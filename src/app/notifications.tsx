@@ -37,11 +37,15 @@ function destinationFor(n: AppNotification): { pathname: string; params?: Record
     const d = (n.data ?? {}) as Record<string, unknown>;
     if (d.screen === 'justificatifs') return { pathname: '/justificatifs' };
     if (d.screen === 'activite') return { pathname: '/activite' };
+    if (d.screen === 'express') return { pathname: '/express/opportunites' };
     if (typeof d.bookingId === 'string') {
         return { pathname: '/booking/[id]', params: { id: d.bookingId } };
     }
     if (typeof d.conversationId === 'string') {
         return { pathname: '/conversation/[id]', params: { id: d.conversationId } };
+    }
+    if (typeof d.demandeExpressId === 'string') {
+        return { pathname: '/express/[id]', params: { id: d.demandeExpressId } };
     }
     if (n.type.startsWith('AVIS') || n.type.startsWith('ABONNEMENT')) {
         return { pathname: '/activite' };

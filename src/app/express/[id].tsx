@@ -104,9 +104,21 @@ export default function DemandeExpressStatusScreen() {
                                   (data?.nbArtisansNotifies ?? 0) > 1 ? 's' : ''
                               } proche${(data?.nbArtisansNotifies ?? 0) > 1 ? 's' : ''} prévenu${
                                   (data?.nbArtisansNotifies ?? 0) > 1 ? 's' : ''
-                              }. Le premier qui accepte vous sera présenté.`}
+                              }. Le premier qui accepte décroche.`}
                     </Text>
                     <Spinner size={26} color={colors.primary} />
+                    <View style={styles.notifyBox}>
+                        <Text style={styles.notifyTxt}>
+                            📩 Pas besoin d’attendre ici : vous pouvez fermer, on vous prévient par
+                            notification dès qu’un artisan accepte.
+                        </Text>
+                    </View>
+                    <Button
+                        title="Fermer (je serai notifié)"
+                        variant="secondary"
+                        fullWidth
+                        onPress={() => router.replace('/(tabs)')}
+                    />
                     <Pressable onPress={onAnnuler} style={styles.cancelBtn} hitSlop={8}>
                         <Text style={styles.cancelTxt}>Arrêter la recherche</Text>
                     </Pressable>
@@ -163,6 +175,19 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     actions: { alignSelf: 'stretch', gap: spacing.sm, marginTop: spacing.md },
+    notifyBox: {
+        alignSelf: 'stretch',
+        backgroundColor: colors.successSoft,
+        borderRadius: radii.md,
+        padding: spacing.md,
+    },
+    notifyTxt: {
+        fontFamily: typography.body,
+        fontSize: fontSizes.sm,
+        lineHeight: lineHeights.sm + 3,
+        color: palette.green700,
+        textAlign: 'center',
+    },
     cancelBtn: { marginTop: spacing.sm, paddingVertical: spacing.sm },
     cancelTxt: {
         fontFamily: typography.bodySemiBold,

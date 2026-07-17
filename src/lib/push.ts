@@ -108,6 +108,9 @@ function routeFromData(data: Record<string, string> | undefined, router: AppRout
         router.push('/mes-annonces');
     } else if (d.screen === 'main-doeuvre') {
         router.push('/annonces-chantier');
+    } else if (d.demandeExpressId) {
+        // Côté client : suivi d'une demande express (attribuée / expirée)
+        router.push({ pathname: '/express/[id]', params: { id: d.demandeExpressId } });
     } else {
         router.push('/notifications');
     }
