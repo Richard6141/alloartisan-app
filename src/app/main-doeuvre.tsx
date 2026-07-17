@@ -92,6 +92,16 @@ function MainDoeuvreContent() {
                 <Text style={styles.publierTxt}>Publier une annonce</Text>
             </Pressable>
 
+            {/* Accès rapides : mes annonces + mes engagements */}
+            <View style={styles.quickRow}>
+                <Pressable style={styles.quickLink} onPress={() => router.push('/mes-annonces')}>
+                    <Text style={styles.quickTxt}>Mes annonces</Text>
+                </Pressable>
+                <Pressable style={styles.quickLink} onPress={() => router.push('/engagements')}>
+                    <Text style={styles.quickTxt}>Mes engagements</Text>
+                </Pressable>
+            </View>
+
             {/* Filtres */}
             <View style={styles.segment}>
                 {FILTRES.map(({ v, t }) => {
@@ -190,6 +200,25 @@ const styles = StyleSheet.create({
         fontFamily: typography.bodySemiBold,
         fontSize: fontSizes.base,
         color: palette.white,
+    },
+    quickRow: {
+        flexDirection: 'row',
+        gap: spacing.sm,
+        marginBottom: spacing.md,
+    },
+    quickLink: {
+        flex: 1,
+        alignItems: 'center',
+        paddingVertical: spacing.sm + 2,
+        borderRadius: radii.md,
+        borderWidth: 1,
+        borderColor: colors.border,
+        backgroundColor: colors.surface,
+    },
+    quickTxt: {
+        fontFamily: typography.bodySemiBold,
+        fontSize: fontSizes.sm,
+        color: colors.text,
     },
     segment: {
         flexDirection: 'row',

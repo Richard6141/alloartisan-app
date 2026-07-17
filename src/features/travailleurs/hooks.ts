@@ -125,6 +125,7 @@ export function useEmbaucher() {
 
 /** Terminer une mission */
 export function useTerminerMission() {
+    const qc = useQueryClient();
     return useMutation({
         mutationFn: async (engagementId: string) => {
             const { data } = await api.patch<EngagementTravail>(
@@ -132,11 +133,13 @@ export function useTerminerMission() {
             );
             return data;
         },
+        onSuccess: () => qc.invalidateQueries({ queryKey: ['engagements', 'mes'] }),
     });
 }
 
 /** Déposer un avis (mutuel) sur une mission terminée */
 export function useDeposerAvisTravail() {
+    const qc = useQueryClient();
     return useMutation({
         mutationFn: async (input: {
             engagementId: string;
@@ -149,5 +152,29 @@ export function useDeposerAvisTravail() {
             );
             return data;
         },
+        onSuccess: () => qc.invalidateQueries({ queryKey: ['engagements', 'mes'] }),
+    });
+}
+
+export interface EngagementResume {
+    id: string;
+    statut: 'EN_COURS' | 'TERMINE' | 'ANNULE';
+    role: 'PATRON' | 'TRAVAILLEUR';
+    conversationId?: string | null;
+    createdAt: string;
+    termineAt?: string | null;
+    autrePartie: { userId: string | null; nom: string; photoUrl: string | null };
+    jaiNote: boolean;
+}
+
+/** Mes engagements (comme patron ou comme ouvrier) */
+export function useMesEngagements(enabled = true) {
+    return useQuery({
+        queryKey: ['engagements', 'mes'],
+        queryFn: async () => {
+            const { data } = await api.get<EngagementResume[]>('/travailleurs/engagements/mes');
+            return data;
+        },
+        enabled,
     });
 }

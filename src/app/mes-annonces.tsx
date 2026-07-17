@@ -18,7 +18,7 @@ import {
     useCandidats,
     useCloturerAnnonce,
 } from '../features/travailleurs/annonces-hooks';
-import { useStartTravailChat } from '../features/travailleurs/hooks';
+import { useStartTravailChat, useEmbaucher } from '../features/travailleurs/hooks';
 import { useAuth } from '../stores/auth';
 import { LoginInvite } from '../components/LoginInvite';
 import { ApiError } from '../lib/api';
@@ -37,6 +37,7 @@ const STATUT_META: Record<
 function CandidatRow({ candidat }: { candidat: CandidatInteret }) {
     const router = useRouter();
     const startChat = useStartTravailChat();
+    const embaucher = useEmbaucher();
     const p = candidat.profil;
     const nom = `${p.user?.prenom ?? ''} ${p.user?.nom ?? ''}`.trim() || 'Travailleur';
     const metiers = (p.metiers ?? []).map((m) => m.metier?.nom).filter(Boolean).join(', ');
@@ -48,6 +49,30 @@ function CandidatRow({ candidat }: { candidat: CandidatInteret }) {
         } catch (e) {
             Alert.alert('Impossible', e instanceof ApiError ? e.message : 'Réessayez.');
         }
+    };
+
+    const onEmbaucher = () => {
+        Alert.alert('Embaucher', `Confirmer l'embauche de ${nom} ?`, [
+            { text: 'Annuler', style: 'cancel' },
+            {
+                text: "Oui, j'embauche",
+                onPress: () =>
+                    embaucher.mutate(
+                        { profilTravailleurId: p.id },
+                        {
+                            onSuccess: () => {
+                                Alert.alert(
+                                    'Embauché ✅',
+                                    'Retrouvez cette mission dans « Mes engagements » pour la clôturer puis noter.',
+                                    [{ text: 'Voir', onPress: () => router.push('/engagements') }],
+                                );
+                            },
+                            onError: (e) =>
+                                Alert.alert('Impossible', e instanceof ApiError ? e.message : 'Réessayez.'),
+                        },
+                    ),
+            },
+        ]);
     };
 
     return (
@@ -69,13 +94,21 @@ function CandidatRow({ candidat }: { candidat: CandidatInteret }) {
                     <Text style={styles.candidatMsg}>« {candidat.message} »</Text>
                 ) : null}
             </View>
-            <Pressable style={styles.chatBtn} onPress={discuter} hitSlop={8}>
-                {startChat.isPending ? (
-                    <Spinner size={18} color={palette.white} />
-                ) : (
-                    <MessageCircle size={18} color={palette.white} strokeWidth={2} />
-                )}
-            </Pressable>
+            <View style={styles.candidatActions}>
+                <Pressable style={styles.chatBtn} onPress={discuter} hitSlop={8}>
+                    {startChat.isPending ? (
+                        <Spinner size={18} color={palette.white} />
+                    ) : (
+                        <MessageCircle size={18} color={palette.white} strokeWidth={2} />
+                    )}
+                </Pressable>
+                <Button
+                    title="Embaucher"
+                    size="sm"
+                    loading={embaucher.isPending}
+                    onPress={onEmbaucher}
+                />
+            </View>
         </View>
     );
 }
@@ -323,5 +356,9 @@ const styles = StyleSheet.create({
         backgroundColor: colors.primary,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    candidatActions: {
+        alignItems: 'flex-end',
+        gap: spacing.sm,
     },
 });
