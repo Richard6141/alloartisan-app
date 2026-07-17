@@ -45,7 +45,7 @@ export function LockedConversation({
             <View style={styles.previewCard}>
                 <MessageSquare size={18} color={colors.primary} strokeWidth={2.2} />
                 <Text style={styles.previewText}>
-                    Un client attend votre réponse — débloquez pour décrocher la
+                    Un client attend votre réponse. Débloquez pour décrocher la
                     mission.
                 </Text>
             </View>
@@ -82,7 +82,7 @@ export function LockedConversation({
                 <View style={styles.gateRow}>
                     <Sparkles size={18} color={palette.terracotta600} strokeWidth={2.2} />
                     <Text style={styles.gateText}>
-                        Vos essais gratuits sont épuisés — abonnez-vous pour continuer.
+                        Vos essais gratuits sont épuisés, abonnez-vous pour continuer.
                     </Text>
                 </View>
             )}

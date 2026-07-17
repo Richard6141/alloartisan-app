@@ -108,7 +108,7 @@ function AnnonceRow({ annonce }: { annonce: AnnonceChantier }) {
             <View style={styles.cardHead}>
                 <Text style={styles.cardTitle} numberOfLines={2}>
                     {annonce.type === 'OUVRIER' ? 'Ouvrier' : 'Aide'}
-                    {annonce.metier ? ` · ${annonce.metier.nom}` : ''} — {annonce.ville}
+                    {annonce.metier ? ` · ${annonce.metier.nom}` : ''} · {annonce.ville}
                 </Text>
                 <View style={[styles.statut, { backgroundColor: st.bg }]}>
                     <Text style={[styles.statutTxt, { color: st.fg }]}>{st.label}</Text>

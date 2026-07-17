@@ -22,6 +22,7 @@ import {
     Hammer,
     Megaphone,
     Trophy,
+    CalendarCheck,
     Share2,
     Medal,
 } from 'lucide-react-native';
@@ -193,16 +194,16 @@ function ProfileContent() {
                                 onPress={() => router.push('/favoris')}
                             />
                             <QuickTile
-                                tone="green"
-                                icon={Trophy}
-                                label="Ambassadeur"
-                                onPress={() => router.push('/recompenses')}
+                                tone="navy"
+                                icon={CalendarCheck}
+                                label="Mes réservations"
+                                onPress={() => router.push('/(tabs)/reservations')}
                             />
                             <QuickTile
-                                tone="navy"
-                                icon={Wallet}
-                                label="Paiements"
-                                onPress={() => router.push('/paiements')}
+                                tone="green"
+                                icon={Hammer}
+                                label="Devenir artisan"
+                                onPress={() => router.push('/artisan-onboarding')}
                             />
                             <QuickTile
                                 tone="terracotta"
@@ -214,27 +215,30 @@ function ProfileContent() {
                     )}
                 </View>
 
-                {/* ─── Bannière parrainage (Ambassadeur) ─── */}
-                <Pressable
-                    style={styles.ambassador}
-                    onPress={() => router.push('/recompenses')}
-                    accessibilityRole="button"
-                >
-                    <View style={styles.ambassadorIcon}>
-                        <Gift size={20} color={palette.white} strokeWidth={2} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                        <Text style={styles.ambassadorTitle} numberOfLines={1}>
-                            Programme Ambassadeur
-                        </Text>
-                        <Text style={styles.ambassadorText} numberOfLines={2}>
-                            Parrainez et gagnez des jours d'abonnement offerts + un badge.
-                        </Text>
-                    </View>
-                    <Pressable onPress={shareCode} hitSlop={10} style={styles.ambassadorShare}>
-                        <Share2 size={16} color={palette.white} strokeWidth={2.2} />
+                {/* ─── Bannière parrainage (Ambassadeur) — ARTISANS uniquement :
+                    la récompense est en jours d'abonnement, sans objet pour un client ─── */}
+                {isArtisan && (
+                    <Pressable
+                        style={styles.ambassador}
+                        onPress={() => router.push('/recompenses')}
+                        accessibilityRole="button"
+                    >
+                        <View style={styles.ambassadorIcon}>
+                            <Gift size={20} color={palette.white} strokeWidth={2} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.ambassadorTitle} numberOfLines={1}>
+                                Programme Ambassadeur
+                            </Text>
+                            <Text style={styles.ambassadorText} numberOfLines={2}>
+                                Parrainez et gagnez des jours d'abonnement offerts + un badge.
+                            </Text>
+                        </View>
+                        <Pressable onPress={shareCode} hitSlop={10} style={styles.ambassadorShare}>
+                            <Share2 size={16} color={palette.white} strokeWidth={2.2} />
+                        </Pressable>
                     </Pressable>
-                </Pressable>
+                )}
 
                 {/* ─── Admin ─── */}
                 {isAdmin && (

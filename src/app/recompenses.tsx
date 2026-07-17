@@ -87,7 +87,7 @@ function AmbassadeurHub() {
             <Leaderboard />
             <Text style={styles.footerNote}>
                 Comment ça marche : invitez un artisan avec votre code. Dès qu'il prend son premier
-                abonnement, vous recevez tous les deux des jours d'abonnement offerts — et vous
+                abonnement, vous recevez tous les deux des jours d'abonnement offerts, et vous
                 progressez vers les paliers Ambassadeur.
             </Text>
         </ScrollView>
@@ -127,8 +127,8 @@ function StatutCard({ data, loading }: { data?: MyReferrals; loading: boolean })
             </View>
             <Text style={styles.progressHint}>
                 {prochain
-                    ? `${abonnes}/${prochain.seuil} filleuls abonnés — plus que ${prochain.restant} pour le palier ${NIVEAU_META[prochain.niveau].label} !`
-                    : `${abonnes} filleuls abonnés — palier maximum atteint 🎉`}
+                    ? `${abonnes}/${prochain.seuil} filleuls abonnés · plus que ${prochain.restant} pour le palier ${NIVEAU_META[prochain.niveau].label} !`
+                    : `${abonnes} filleuls abonnés · palier maximum atteint 🎉`}
             </Text>
         </View>
     );

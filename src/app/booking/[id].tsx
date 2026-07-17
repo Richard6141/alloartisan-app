@@ -83,11 +83,11 @@ const TIMELINE_STEPS: StatutBooking[] = ['SOUMISE', 'ACCEPTEE', 'CONFIRMEE', 'EN
 const ARTISAN_DESCRIPTIONS: Partial<Record<StatutBooking, string>> = {
     SOUMISE: 'Nouvelle demande ! Acceptez-la pour entrer en contact avec le client.',
     ACCEPTEE:
-        'Vous avez accepté. En attente de la confirmation du client — profitez-en pour discuter du prix dans la messagerie.',
+        'Vous avez accepté. En attente de la confirmation du client. Profitez-en pour discuter du prix dans la messagerie.',
     PRIX_PROPOSE: 'Devis envoyé. En attente de la réponse du client.',
     CONTRE_OFFRE: 'Le client négocie. Discutez-en dans la messagerie.',
     CONFIRMEE:
-        'Rendez-vous confirmé ! Activez « Je pars » pour que le client vous suive — ou marquez directement l’intervention terminée si c’est déjà fait.',
+        'Rendez-vous confirmé ! Activez « Je pars » pour que le client vous suive, ou marquez directement l’intervention terminée si c’est déjà fait.',
     EN_COURS: "Intervention en cours. Pensez à la clôturer une fois le travail terminé.",
     TERMINEE: 'Mission terminée. Le client peut maintenant vous noter.',
 };
@@ -98,7 +98,14 @@ export default function BookingDetailScreen() {
     const { data: booking, isLoading, isError, refetch, isFetching } = useBooking(id);
     const { confirm, cancel } = useBookingAction(id);
     const startConversation = useStartConversation();
-    const isArtisan = useAuth((s) => s.user?.role === 'ARTISAN');
+    const userId = useAuth((s) => s.user?.id);
+    const roleIsArtisan = useAuth((s) => s.user?.role === 'ARTISAN');
+    // Perspective RÉELLE dans cette mission : un artisan peut être le CLIENT
+    // d'un confrère qu'il a réservé. On se fie donc à la relation (client de la
+    // réservation ?) et non au rôle global — sinon l'artisan-client voyait la
+    // vue artisan et l'accès était refusé côté serveur (403 → « impossible »).
+    const isArtisan =
+        booking && userId ? booking.client?.id !== userId : roleIsArtisan;
 
     const meta = booking ? STATUS_META[booking.statut] : null;
     const description =

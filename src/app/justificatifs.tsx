@@ -370,10 +370,10 @@ function JustificatifsContent() {
                             </Text>
                             <Text style={styles.statusText}>
                                 {identiteOk ? '✓' : '1.'} Votre pièce d'identité
-                                {identiteOk ? ' — envoyée' : ''}
+                                {identiteOk ? ' (envoyée)' : ''}
                                 {'\n'}
                                 {preuvePrincipaleOk ? '✓' : '2.'} La preuve de votre métier
-                                principal{preuvePrincipaleOk ? ' — envoyée' : ''}
+                                principal{preuvePrincipaleOk ? ' (envoyée)' : ''}
                                 {'\n'}Notre équipe valide ensuite votre profil et il devient
                                 visible des clients.
                             </Text>

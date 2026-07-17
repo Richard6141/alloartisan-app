@@ -430,20 +430,25 @@ export default function HomeScreen() {
                     </View>
                 </View>
 
-                {/* Parrainage — coupon discret en bas de fil */}
-                <Pressable
-                    onPress={() => goAuthOr('/(tabs)/profil')}
-                    accessibilityRole="button"
-                    accessibilityLabel="Parrainage : gagnez 1 000 francs"
-                    style={({ pressed }) => [styles.referralCoupon, pressed && { opacity: 0.85 }]}
-                >
-                    <Gift size={15} color="#047857" strokeWidth={2} />
-                    <Text style={styles.referralCouponText}>
-                        Parrainez un ami : <Text style={styles.referralCouponStrong}>+1 000 F</Text>{' '}
-                        pour vous, 500 F pour lui
-                    </Text>
-                    <ChevronRight size={14} color="#047857" strokeWidth={2.2} />
-                </Pressable>
+                {/* Parrainage (Ambassadeur) — ARTISANS uniquement : la récompense
+                    est en jours d'abonnement offerts, sans objet pour un client */}
+                {user?.role === 'ARTISAN' && (
+                    <Pressable
+                        onPress={() => goAuthOr('/recompenses')}
+                        accessibilityRole="button"
+                        accessibilityLabel="Programme Ambassadeur : jours d'abonnement offerts"
+                        style={({ pressed }) => [styles.referralCoupon, pressed && { opacity: 0.85 }]}
+                    >
+                        <Gift size={15} color="#047857" strokeWidth={2} />
+                        <Text style={styles.referralCouponText}>
+                            Parrainez un artisan :{' '}
+                            <Text style={styles.referralCouponStrong}>
+                                des jours d'abonnement offerts
+                            </Text>
+                        </Text>
+                        <ChevronRight size={14} color="#047857" strokeWidth={2.2} />
+                    </Pressable>
+                )}
             </ScrollView>
         </SafeAreaView>
     );

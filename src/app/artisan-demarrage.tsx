@@ -142,7 +142,7 @@ function DemarrageContent() {
         {
             icone: Images,
             titre: 'Vos réalisations',
-            sousTitre: 'Photos de chantiers — recommandé pour attirer',
+            sousTitre: 'Photos de chantiers : recommandé pour attirer',
             etat: aDesPhotos ? 'valide' : 'a_faire',
             route: '/mes-realisations',
             requis: false,

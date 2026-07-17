@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -11,15 +11,17 @@ import {
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Hammer, HardHat, Check } from 'lucide-react-native';
+import { useQuery } from '@tanstack/react-query';
+import { ArrowLeft, Hammer, HardHat, Check, LocateFixed } from 'lucide-react-native';
 import { Button, Input } from '../components/ui';
-import { useCategories } from '../features/catalog/hooks';
 import {
     useMonProfilTravailleur,
     useUpsertProfilTravailleur,
 } from '../features/travailleurs/hooks';
 import { resolveCoords } from '../lib/geo';
-import { ApiError } from '../lib/api';
+import { api, ApiError } from '../lib/api';
+import { queryKeys } from '../lib/queryClient';
+import type { Metier } from '../types/api';
 import { colors, palette, spacing, typography, fontSizes, radii } from '../theme/tokens';
 
 type Type = 'OUVRIER' | 'AIDE';
@@ -28,7 +30,16 @@ type Dispo = 'PONCTUEL' | 'REGULIER';
 export default function ProfilTravailleurScreen() {
     const router = useRouter();
     const { data: existant } = useMonProfilTravailleur();
-    const { data: categories } = useCategories();
+    // Liste PLATE des métiers (l'endpoint /categories-metiers ne renvoie que le
+    // COMPTE des métiers, pas le tableau → la liste des chips restait vide).
+    const { data: metiers } = useQuery({
+        queryKey: queryKeys.metiers,
+        queryFn: async () => {
+            const { data } = await api.get<Metier[] | { data: Metier[] }>('/metiers');
+            return Array.isArray(data) ? data : data.data;
+        },
+        staleTime: 24 * 60 * 60 * 1000,
+    });
     const upsert = useUpsertProfilTravailleur();
 
     const [type, setType] = useState<Type>('OUVRIER');
@@ -41,6 +52,22 @@ export default function ProfilTravailleurScreen() {
     const [description, setDescription] = useState('');
     const [actif, setActif] = useState(true);
     const [loading, setLoading] = useState(false);
+    const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+    const [locating, setLocating] = useState(false);
+
+    const useMyPosition = async () => {
+        setLocating(true);
+        const pos = await resolveCoords();
+        setLocating(false);
+        if (!pos) {
+            Alert.alert(
+                'Position requise',
+                'Autorisez la localisation pour être trouvé près des chantiers.',
+            );
+            return;
+        }
+        setCoords({ latitude: pos.latitude, longitude: pos.longitude });
+    };
 
     // Pré-remplir si un profil existe déjà
     useEffect(() => {
@@ -55,11 +82,6 @@ export default function ProfilTravailleurScreen() {
         setDescription(existant.description ?? '');
         setActif(existant.actif);
     }, [existant]);
-
-    const metiers = useMemo(
-        () => (categories ?? []).flatMap((c) => c.metiers ?? []),
-        [categories],
-    );
 
     const toggleMetier = (id: string) => {
         setMetierIds((prev) => {
@@ -88,18 +110,18 @@ export default function ProfilTravailleurScreen() {
         }
         setLoading(true);
         try {
-            const coords = await resolveCoords();
-            if (!coords) {
+            const pos = coords ?? (await resolveCoords());
+            if (!pos) {
                 setLoading(false);
-                Alert.alert('Position requise', 'Autorisez la localisation pour être trouvé près des chantiers.');
+                Alert.alert('Position requise', 'Touchez « Utiliser ma position » et autorisez la localisation pour être trouvé près des chantiers.');
                 return;
             }
             await upsert.mutateAsync({
                 type,
                 polyvalent: type === 'AIDE' ? polyvalent : false,
                 villePrincipale: ville.trim(),
-                latitude: coords.latitude,
-                longitude: coords.longitude,
+                latitude: pos.latitude,
+                longitude: pos.longitude,
                 disponibilite: dispo,
                 disponibleMaintenant: dispoNow,
                 tarifJournalier: tarif ? Number(tarif) : undefined,
@@ -189,7 +211,7 @@ export default function ProfilTravailleurScreen() {
                                 {type === 'OUVRIER' ? 'Métier(s) maîtrisé(s)' : 'Domaine(s)'} · max 2
                             </Text>
                             <View style={styles.chips}>
-                                {metiers.map((m) => {
+                                {(metiers ?? []).map((m) => {
                                     const sel = metierIds.includes(m.id);
                                     return (
                                         <Pressable
@@ -212,6 +234,20 @@ export default function ProfilTravailleurScreen() {
 
                     {/* Ville */}
                     <Input label="Ville principale" placeholder="Cotonou, Calavi…" value={ville} onChangeText={setVille} />
+                    <Pressable onPress={useMyPosition} style={styles.locateBtn} accessibilityRole="button">
+                        <LocateFixed
+                            size={15}
+                            color={coords ? colors.success : colors.primary}
+                            strokeWidth={2}
+                        />
+                        <Text style={[styles.locateTxt, coords != null && { color: colors.success }]}>
+                            {locating
+                                ? 'Localisation…'
+                                : coords
+                                  ? 'Position enregistrée ✓'
+                                  : 'Utiliser ma position (requis)'}
+                        </Text>
+                    </Pressable>
 
                     {/* Disponibilité */}
                     <Text style={styles.label}>Disponibilité</Text>
@@ -328,6 +364,18 @@ const styles = StyleSheet.create({
     },
     switchLabel: { fontFamily: typography.bodySemiBold, fontSize: fontSizes.sm, color: colors.text },
     switchHint: { fontFamily: typography.body, fontSize: fontSizes.xs, color: colors.textSecondary },
+    locateBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
+        alignSelf: 'flex-start',
+        paddingVertical: spacing.xs,
+    },
+    locateTxt: {
+        fontFamily: typography.bodySemiBold,
+        fontSize: fontSizes.sm,
+        color: colors.primary,
+    },
     chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
     chip: {
         flexDirection: 'row',

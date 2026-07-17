@@ -130,7 +130,7 @@ export default function TravailleurDetailScreen() {
                             <Row label="Compétences">
                                 {t.polyvalent
                                     ? 'Polyvalent · tous chantiers'
-                                    : (t.metiers ?? []).map((m) => m.metier?.nom).filter(Boolean).join(', ') || '—'}
+                                    : (t.metiers ?? []).map((m) => m.metier?.nom).filter(Boolean).join(', ') || 'Non précisé'}
                             </Row>
                             <Row label="Disponibilité">
                                 {t.disponibilite === 'PONCTUEL' ? 'Ponctuel (journalier)' : 'Régulier'}

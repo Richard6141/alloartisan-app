@@ -150,11 +150,14 @@ export const useAuth = create<AuthState>((set, get) => ({
     },
 
     async logout(revokeServer = true) {
-        await unregisterForPush();
-        // Révoquer la session côté serveur (refresh token) tant que le token
-        // d'accès est encore présent. Non bloquant : hors ligne / token expiré
-        // → on nettoie quand même localement.
+        // On ne désenregistre le token FCM QUE sur une déconnexion EXPLICITE de
+        // l'utilisateur. En cas d'expiration automatique (revokeServer=false), on
+        // garde le token : le push reprendra dès la reconnexion, sans trou.
         if (revokeServer) {
+            await unregisterForPush();
+            // Révoquer la session côté serveur (refresh token) tant que le token
+            // d'accès est encore présent. Non bloquant : hors ligne / token expiré
+            // → on nettoie quand même localement.
             try {
                 await api.post('/auth/logout');
             } catch {

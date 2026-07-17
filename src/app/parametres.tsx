@@ -165,7 +165,7 @@ function SettingsForm() {
                                     Gérée dans votre profil professionnel
                                 </Text>
                                 <Text style={styles.locationRedirectText}>
-                                    Ville{user?.ville ? ` : ${user.ville}` : ''} — suit votre
+                                    Ville{user?.ville ? ` : ${user.ville}` : ''}. Elle suit votre
                                     position réelle, avec votre zone d'intervention
                                 </Text>
                             </View>

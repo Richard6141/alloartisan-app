@@ -21,7 +21,14 @@ export const queryClient = new QueryClient({
         queries: {
             staleTime: 60 * 1000, // 1 min : données fraîches sans sur-requêter
             gcTime: 7 * 24 * 60 * 60 * 1000, // 7 jours en cache disque
-            retry: 2,
+            // Ne JAMAIS réessayer une erreur 4xx (401/403/404/429…) : réessayer un
+            // 429 « Too Many Requests » ne faisait qu'aggraver la saturation. On
+            // ne retente que les erreurs réseau/serveur (5xx), 2 fois maximum.
+            retry: (failureCount, error) => {
+                const status = (error as { status?: number })?.status;
+                if (status && status >= 400 && status < 500) return false;
+                return failureCount < 2;
+            },
             refetchOnReconnect: true,
         },
         mutations: {
