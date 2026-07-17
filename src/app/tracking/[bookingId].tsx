@@ -37,9 +37,15 @@ const PHASE_LABELS: Record<TrackingPhase, { label: string; tone: 'primary' | 'su
 };
 
 export default function TrackingScreen() {
-    const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
+    const { bookingId, mode } = useLocalSearchParams<{ bookingId: string; mode?: string }>();
     const router = useRouter();
-    const isArtisan = useAuth((s) => s.user?.role === 'ARTISAN');
+    const roleIsArtisan = useAuth((s) => s.user?.role === 'ARTISAN');
+    // Perspective RÉELLE dans cette mission : passée par l'écran mission (qui la
+    // déduit de la relation client/artisan). Un artisan peut être le CLIENT d'un
+    // confrère → se fier au rôle global ferait émettre le GPS et le serveur
+    // refuserait (« suivi impossible »). Fallback rôle global si on arrive ici
+    // par une notification (pas de param).
+    const isArtisan = mode ? mode === 'artisan' : roleIsArtisan;
 
     const [position, setPosition] = useState<LivePosition | null>(null);
     const [phase, setPhase] = useState<TrackingPhase | null>(null);

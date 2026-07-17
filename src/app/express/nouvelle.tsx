@@ -170,7 +170,7 @@ export default function NouvelleDemandeExpressScreen() {
                         </View>
                         <Text style={styles.heroText}>
                             On prévient d’un coup tous les artisans proches et disponibles. Le premier
-                            qui accepte vous rappelle — pas besoin de choisir un par un.
+                            qui accepte vous rappelle, pas besoin de choisir un par un.
                         </Text>
                     </View>
 

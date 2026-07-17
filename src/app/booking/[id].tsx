@@ -270,7 +270,10 @@ export default function BookingDetailScreen() {
                             onPress={() =>
                                 router.push({
                                     pathname: '/tracking/[bookingId]',
-                                    params: { bookingId: booking.id },
+                                    params: {
+                                        bookingId: booking.id,
+                                        mode: isArtisan ? 'artisan' : 'client',
+                                    },
                                 })
                             }
                             style={({ pressed }) => [styles.trackCard, pressed && { opacity: 0.92 }]}
@@ -502,7 +505,7 @@ function ArtisanActionPanel({ booking }: { booking: Booking }) {
                         onPress={() =>
                             router.push({
                                 pathname: '/tracking/[bookingId]',
-                                params: { bookingId: booking.id },
+                                params: { bookingId: booking.id, mode: 'artisan' },
                             })
                         }
                     />

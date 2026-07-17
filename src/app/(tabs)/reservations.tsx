@@ -43,6 +43,7 @@ export default function ReservationsScreen() {
 function BookingsList() {
     const { data, isLoading, error } = useBookings();
     const isArtisan = useAuth((s) => s.user?.role === 'ARTISAN');
+    const userId = useAuth((s) => s.user?.id);
 
     // Artisan inscrit mais profil métier pas encore créé → onboarding
     if (isArtisan && error) {
@@ -92,7 +93,15 @@ function BookingsList() {
                     }}
                     ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
                     renderItem={({ item }) => (
-                        <BookingCard booking={item} isArtisan={isArtisan} />
+                        // Perspective RÉELLE par réservation : un artisan peut être
+                        // le CLIENT d'un confrère. On déduit de la relation (suis-je
+                        // le client ?) plutôt que du rôle global.
+                        <BookingCard
+                            booking={item}
+                            isArtisan={
+                                item.client?.id ? item.client.id !== userId : isArtisan
+                            }
+                        />
                     )}
                 />
             )}

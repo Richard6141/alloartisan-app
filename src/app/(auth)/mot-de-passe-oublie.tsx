@@ -62,7 +62,7 @@ export default function MotDePasseOublieScreen() {
             await api.post('/auth/reset-password', {
                 email: email.trim().toLowerCase(),
                 code: code.trim(),
-                password,
+                newPassword: password,
             });
             Alert.alert(
                 'Mot de passe changé ✅',
