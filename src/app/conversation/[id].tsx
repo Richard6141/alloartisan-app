@@ -98,6 +98,7 @@ export default function ConversationScreen() {
     const userId = useAuth((s) => s.user?.id);
 
     const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [socketReady, setSocketReady] = useState(false);
     const [draft, setDraft] = useState('');
     const [typingMode, setTypingMode] = useState<null | 'text' | 'audio'>(null);
     const [attachOpen, setAttachOpen] = useState(false);
@@ -174,6 +175,8 @@ export default function ConversationScreen() {
     const autoDownloadMedia = useChatPrefs((s) => s.autoDownloadMedia);
     const textScale = useChatPrefs((s) => s.textScale);
     const socketRef = useRef<Socket | null>(null);
+    // Messages entrants pour lesquels on a déjà émis « mark_read » (évite les doublons)
+    const markedReadRef = useRef<Set<string>>(new Set());
     const listRef = useRef<FlatList<ChatMessage>>(null);
     const typingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -227,7 +230,10 @@ export default function ConversationScreen() {
             if (!active) return;
             socketRef.current = socket;
 
-            const join = () => socket.emit('join_conversation', { conversationId: id });
+            const join = () => {
+                socket.emit('join_conversation', { conversationId: id });
+                setSocketReady(true);
+            };
             socket.on('connect', join);
             if (socket.connected) join();
 
@@ -238,9 +244,8 @@ export default function ConversationScreen() {
                         ? prev.map((m) => (m.id === message.id ? { ...message } : m))
                         : [...prev, message],
                 );
-                if (message.senderId !== userId) {
-                    socket.emit('mark_read', { messageId: message.id });
-                }
+                // Le marquage « lu » (et l'accusé ✓✓ vers l'expéditeur) est géré
+                // par l'effet dédié ci-dessous, qui couvre AUSSI l'historique.
             });
             socket.on('message:read', (p: { messageId: string }) => {
                 setMessages((prev) =>
@@ -269,6 +274,7 @@ export default function ConversationScreen() {
 
         return () => {
             active = false;
+            setSocketReady(false);
             socketRef.current?.off('message:new');
             socketRef.current?.off('message:read');
             socketRef.current?.off('message:updated');
@@ -278,6 +284,21 @@ export default function ConversationScreen() {
             void queryClient.invalidateQueries({ queryKey: queryKeys.conversations });
         };
     }, [id, userId, queryClient]);
+
+    // Accusés de lecture : émettre « mark_read » pour tout message ENTRANT non
+    // lu — y compris ceux déjà présents à l'ouverture (historique). La gateway
+    // renvoie alors « message:read » à l'expéditeur → ses ✓ passent en ✓✓ EN
+    // DIRECT. Le Set évite de ré-émettre pour un même message.
+    useEffect(() => {
+        const socket = socketRef.current;
+        if (!socket) return;
+        for (const m of messages) {
+            if (m.pending || m.lu || m.senderId === userId) continue;
+            if (markedReadRef.current.has(m.id)) continue;
+            markedReadRef.current.add(m.id);
+            socket.emit('mark_read', { messageId: m.id });
+        }
+    }, [messages, userId, socketReady]);
 
     /**
      * Envoi via REST avec affichage OPTIMISTE : la bulle apparaît
