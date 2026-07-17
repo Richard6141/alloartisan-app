@@ -12,11 +12,27 @@ import { colors, spacing, typography, fontSizes, lineHeights } from '../../theme
 export default function LoginScreen() {
     const router = useRouter();
     const login = useAuth((s) => s.login);
+    const loginWithGoogle = useAuth((s) => s.loginWithGoogle);
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    const [googleLoading, setGoogleLoading] = useState(false);
+
+    const onGoogle = async () => {
+        setError(null);
+        setGoogleLoading(true);
+        try {
+            await loginWithGoogle();
+            router.replace('/(tabs)');
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : 'Connexion Google impossible.';
+            // Ne pas afficher d'erreur si l'utilisateur a simplement annulé
+            if (!/cancel|annul/i.test(msg)) setError(msg);
+            setGoogleLoading(false);
+        }
+    };
 
     const submit = async () => {
         if (!email.trim() || !password) {
@@ -88,6 +104,21 @@ export default function LoginScreen() {
                             loading={loading}
                             onPress={submit}
                         />
+
+                        <View style={styles.separator}>
+                            <View style={styles.line} />
+                            <Text style={styles.separatorTxt}>ou</Text>
+                            <View style={styles.line} />
+                        </View>
+
+                        <Button
+                            title="Continuer avec Google"
+                            variant="secondary"
+                            size="lg"
+                            fullWidth
+                            loading={googleLoading}
+                            onPress={onGoogle}
+                        />
                     </View>
 
                     <View style={styles.footer}>
@@ -132,6 +163,18 @@ const styles = StyleSheet.create({
         marginBottom: spacing['3xl'],
     },
     form: { gap: spacing.xl },
+    separator: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.md,
+        marginVertical: -spacing.sm,
+    },
+    line: { flex: 1, height: 1, backgroundColor: colors.border },
+    separatorTxt: {
+        fontFamily: typography.body,
+        fontSize: fontSizes.sm,
+        color: colors.textMuted,
+    },
     forgotLink: {
         fontFamily: typography.bodySemiBold,
         fontSize: fontSizes.sm,

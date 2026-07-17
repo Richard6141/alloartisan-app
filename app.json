@@ -76,7 +76,8 @@
           "icon": "./assets/images/android-icon-monochrome.png",
           "color": "#1E3A8A"
         }
-      ]
+      ],
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -86,7 +87,8 @@
       "router": {},
       "eas": {
         "projectId": "dfb30409-55a5-4329-9121-36451b1352dd"
-      }
+      },
+      "googleWebClientId": "REMPLACER_PAR_LE_WEB_CLIENT_ID"
     },
     "owner": "richard-salanon"
   }

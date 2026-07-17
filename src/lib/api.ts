@@ -1,6 +1,7 @@
 import axios, { AxiosError, AxiosRequestConfig } from 'axios';
 import Constants from 'expo-constants';
 import { tokenStorage } from './storage';
+import { getDeviceId } from './device';
 import type { AuthTokens } from '../types/api';
 
 /**
@@ -50,6 +51,12 @@ export class ApiError extends Error {
 api.interceptors.request.use(async (config) => {
     const token = await tokenStorage.getAccessToken();
     if (token) config.headers.Authorization = `Bearer ${token}`;
+    // Identifiant d'appareil (anti multi-comptes, non bloquant)
+    try {
+        config.headers['X-Device-Id'] = await getDeviceId();
+    } catch {
+        // ignore
+    }
     return config;
 });
 

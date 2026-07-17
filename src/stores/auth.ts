@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { router } from 'expo-router';
+import Constants from 'expo-constants';
 import * as LocalAuthentication from 'expo-local-authentication';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { api, setSessionExpiredHandler } from '../lib/api';
 import { tokenStorage, prefsStorage } from '../lib/storage';
 import { closeSockets } from '../lib/socket';
@@ -32,6 +34,8 @@ interface AuthState {
     /** Supprime définitivement le compte (mot de passe requis) */
     deleteAccount: (password: string) => Promise<void>;
     login: (email: string, password: string) => Promise<void>;
+    /** Connexion / inscription via Google */
+    loginWithGoogle: (role?: 'CLIENT' | 'ARTISAN') => Promise<void>;
     register: (payload: { email: string; password: string; role: 'CLIENT' | 'ARTISAN' }) => Promise<void>;
     verifyOtp: (email: string, code: string) => Promise<void>;
     refreshUser: () => Promise<void>;
@@ -126,6 +130,23 @@ export const useAuth = create<AuthState>((set, get) => ({
                 'Ce compte utilise la double authentification, non prise en charge dans cette version.',
             );
         }
+        await tokenStorage.setTokens(data.access_token, data.refresh_token);
+        const { data: user } = await api.get<User>('/users/me');
+        set({ status: 'authenticated', user });
+    },
+
+    async loginWithGoogle(role) {
+        const webClientId = (Constants.expoConfig?.extra as { googleWebClientId?: string })
+            ?.googleWebClientId;
+        GoogleSignin.configure({ webClientId, offlineAccess: false });
+        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+        const res = (await GoogleSignin.signIn()) as {
+            idToken?: string;
+            data?: { idToken?: string };
+        };
+        const idToken = res?.data?.idToken ?? res?.idToken;
+        if (!idToken) throw new Error('Connexion Google impossible (aucun jeton reçu).');
+        const { data } = await api.post<AuthTokens>('/auth/google', { idToken, role });
         await tokenStorage.setTokens(data.access_token, data.refresh_token);
         const { data: user } = await api.get<User>('/users/me');
         set({ status: 'authenticated', user });
