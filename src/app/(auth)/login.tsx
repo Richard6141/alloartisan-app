@@ -4,6 +4,7 @@ import { Link, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Mail, Lock } from 'lucide-react-native';
 import { Button, Input } from '../../components/ui';
+import { GoogleButton } from '../../components/GoogleButton';
 import { AnimatedBrandLogo } from '../../components/BrandLogo';
 import { useAuth } from '../../stores/auth';
 import { ApiError } from '../../lib/api';
@@ -111,14 +112,7 @@ export default function LoginScreen() {
                             <View style={styles.line} />
                         </View>
 
-                        <Button
-                            title="Continuer avec Google"
-                            variant="secondary"
-                            size="lg"
-                            fullWidth
-                            loading={googleLoading}
-                            onPress={onGoogle}
-                        />
+                        <GoogleButton onPress={onGoogle} loading={googleLoading} />
                     </View>
 
                     <View style={styles.footer}>

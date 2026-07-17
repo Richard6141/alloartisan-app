@@ -34,8 +34,12 @@ export default function MainDoeuvreScreen() {
                     <ArrowLeft size={22} color={colors.text} strokeWidth={2} />
                 </Pressable>
                 <View style={{ flex: 1 }}>
-                    <Text style={styles.title}>Main-d'œuvre</Text>
-                    <Text style={styles.subtitle}>Ouvriers & aides autour de vous</Text>
+                    <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit>
+                        Main-d'œuvre
+                    </Text>
+                    <Text style={styles.subtitle} numberOfLines={1}>
+                        Ouvriers & aides autour de vous
+                    </Text>
                 </View>
                 {isAuth && (
                     <Pressable

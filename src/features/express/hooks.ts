@@ -27,6 +27,15 @@ export interface DemandeExpressResume {
     nbArtisansNotifies: number;
     expireAt: string;
     createdAt?: string;
+    // Renvoyés par GET /:id pour permettre de relancer (zone élargie) sans re-saisir
+    metierId?: string;
+    titre?: string;
+    description?: string;
+    adresseIntervention?: string;
+    latitude?: number;
+    longitude?: number;
+    rayonKm?: number;
+    estUrgent?: boolean;
 }
 
 export interface OpportuniteExpress {

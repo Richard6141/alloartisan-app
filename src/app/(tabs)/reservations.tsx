@@ -132,7 +132,7 @@ function BookingCard({ booking, isArtisan }: { booking: Booking; isArtisan: bool
         ? booking.client?.photoUrl
         : (booking.artisan?.photoProfilUrl ?? booking.artisan?.user?.photoUrl);
 
-    return (
+    const card = (
         <Pressable
             onPress={() =>
                 router.push({ pathname: '/booking/[id]', params: { id: booking.id } })
@@ -194,6 +194,31 @@ function BookingCard({ booking, isArtisan }: { booking: Booking; isArtisan: bool
             </Card>
         </Pressable>
     );
+
+    // Client : inviter à noter l'artisan sur une mission terminée (chemin clair)
+    const noterCTA =
+        !isArtisan && booking.statut === 'TERMINEE' && !booking.avis ? (
+            <Pressable
+                onPress={() =>
+                    router.push({
+                        pathname: '/noter/[bookingId]',
+                        params: { bookingId: booking.id, nom: interlocuteur },
+                    })
+                }
+                style={styles.noterBtn}
+                accessibilityRole="button"
+            >
+                <Text style={styles.noterTxt}>⭐ Noter l'artisan</Text>
+            </Pressable>
+        ) : null;
+
+    if (!noterCTA) return card;
+    return (
+        <View>
+            {card}
+            {noterCTA}
+        </View>
+    );
 }
 
 const styles = StyleSheet.create({
@@ -216,6 +241,20 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: -8,
         right: 14,
+    },
+    noterBtn: {
+        marginTop: spacing.sm,
+        alignItems: 'center',
+        paddingVertical: spacing.sm + 2,
+        borderRadius: radii.md,
+        backgroundColor: colors.accentSoft,
+        borderWidth: 1,
+        borderColor: colors.accent,
+    },
+    noterTxt: {
+        fontFamily: typography.bodySemiBold,
+        fontSize: fontSizes.sm,
+        color: colors.accentPressed,
     },
     cardHeader: {
         flexDirection: 'row',

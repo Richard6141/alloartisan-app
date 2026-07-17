@@ -134,7 +134,16 @@ export async function resolvePosition(options?: {
         return {
             latitude: coords.latitude,
             longitude: coords.longitude,
-            ville: place?.city ?? osm?.ville ?? place?.subregion ?? null,
+            // Replis élargis (couverture géocodage faible au Bénin) : ville, puis
+            // commune/sous-région, puis quartier, puis région — pour éviter un
+            // champ « ville » vide. L'utilisateur peut de toute façon le corriger.
+            ville:
+                place?.city ??
+                osm?.ville ??
+                place?.subregion ??
+                osm?.quartier ??
+                place?.region ??
+                null,
             // Mieux vaut un champ vide qu'un mauvais quartier : pas de repli
             // sur le nom de rue
             quartier: osm?.quartier ?? place?.district ?? null,

@@ -3,8 +3,13 @@ import { View, Text, StyleSheet, Pressable, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Zap, SearchX, CheckCircle2 } from 'lucide-react-native';
+import { ApiError } from '../../lib/api';
 import { Button, Spinner } from '../../components/ui';
-import { useDemandeExpress, useAnnulerDemandeExpress } from '../../features/express/hooks';
+import {
+    useDemandeExpress,
+    useAnnulerDemandeExpress,
+    useCreateDemandeExpress,
+} from '../../features/express/hooks';
 import { colors, palette, spacing, typography, fontSizes, lineHeights, radii } from '../../theme/tokens';
 
 /**
@@ -17,6 +22,42 @@ export default function DemandeExpressStatusScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const { data, isLoading } = useDemandeExpress(id ?? null);
     const annuler = useAnnulerDemandeExpress();
+    const recreer = useCreateDemandeExpress();
+
+    // Réessayer en élargissant la zone (double le rayon, min 25 km), sans re-saisir
+    const onReessayerElargi = () => {
+        if (!data?.metierId || data.latitude == null || data.longitude == null) {
+            router.replace('/express/nouvelle');
+            return;
+        }
+        const rayon = Math.min(50, Math.max(25, (data.rayonKm ?? 10) * 2));
+        recreer.mutate(
+            {
+                metierId: data.metierId,
+                titre: data.titre ?? 'Demande express',
+                description: data.description ?? '',
+                adresseIntervention: data.adresseIntervention ?? 'À proximité',
+                latitude: data.latitude,
+                longitude: data.longitude,
+                estUrgent: data.estUrgent,
+                rayonKm: rayon,
+            },
+            {
+                onSuccess: (d) =>
+                    router.replace({ pathname: '/express/[id]', params: { id: d.id } }),
+                onError: (e) => {
+                    const msg = e instanceof ApiError ? e.message : 'Réessayez plus tard.';
+                    Alert.alert('Toujours aucun artisan', msg, [
+                        { text: 'Fermer', style: 'cancel' },
+                        {
+                            text: 'Chercher moi-même',
+                            onPress: () => router.replace('/(tabs)/recherche'),
+                        },
+                    ]);
+                },
+            },
+        );
+    };
 
     // Un artisan a accepté → on va sur la mission créée
     useEffect(() => {
@@ -53,14 +94,15 @@ export default function DemandeExpressStatusScreen() {
                     </View>
                     <Text style={styles.title}>Aucun artisan n’a répondu</Text>
                     <Text style={styles.text}>
-                        Les artisans proches ne sont pas disponibles pour l’instant. Réessayez dans un
-                        moment ou choisissez un artisan vous-même.
+                        Aucun artisan proche n’était disponible à temps. Élargissez la zone pour
+                        toucher plus d’artisans, ou choisissez‑en un vous‑même.
                     </Text>
                     <View style={styles.actions}>
                         <Button
-                            title="Réessayer"
+                            title="Réessayer en élargissant la zone"
                             fullWidth
-                            onPress={() => router.replace('/express/nouvelle')}
+                            loading={recreer.isPending}
+                            onPress={onReessayerElargi}
                         />
                         <Button
                             title="Choisir un artisan moi-même"

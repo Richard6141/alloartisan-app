@@ -11,6 +11,7 @@ import { Link, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Mail, Lock, User, Wrench } from 'lucide-react-native';
 import { Button, Input } from '../../components/ui';
+import { GoogleButton } from '../../components/GoogleButton';
 import { BrandLogo } from '../../components/BrandLogo';
 import { useAuth } from '../../stores/auth';
 import { ApiError } from '../../lib/api';
@@ -29,6 +30,7 @@ function validatePassword(pwd: string): string | null {
 export default function RegisterScreen() {
     const router = useRouter();
     const register = useAuth((s) => s.register);
+    const loginWithGoogle = useAuth((s) => s.loginWithGoogle);
 
     const [role, setRole] = useState<Role>('CLIENT');
     const [email, setEmail] = useState('');
@@ -36,6 +38,20 @@ export default function RegisterScreen() {
     const [pwdError, setPwdError] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    const [googleLoading, setGoogleLoading] = useState(false);
+
+    const onGoogle = async () => {
+        setError(null);
+        setGoogleLoading(true);
+        try {
+            await loginWithGoogle(role);
+            router.replace('/(tabs)');
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : 'Inscription Google impossible.';
+            if (!/cancel|annul/i.test(msg)) setError(msg);
+            setGoogleLoading(false);
+        }
+    };
 
     const submit = async () => {
         const pwdIssue = validatePassword(password);
@@ -143,6 +159,14 @@ export default function RegisterScreen() {
                             loading={loading}
                             onPress={submit}
                         />
+
+                        <View style={styles.separator}>
+                            <View style={styles.line} />
+                            <Text style={styles.separatorTxt}>ou</Text>
+                            <View style={styles.line} />
+                        </View>
+
+                        <GoogleButton onPress={onGoogle} loading={googleLoading} />
                     </View>
 
                     <View style={styles.footer}>
@@ -209,6 +233,18 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     form: { gap: spacing.xl },
+    separator: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.md,
+        marginVertical: -spacing.sm,
+    },
+    line: { flex: 1, height: 1, backgroundColor: colors.border },
+    separatorTxt: {
+        fontFamily: typography.body,
+        fontSize: fontSizes.sm,
+        color: colors.textMuted,
+    },
     footer: {
         flexDirection: 'row',
         justifyContent: 'center',
