@@ -252,6 +252,11 @@ export default function ConversationScreen() {
                     prev.map((m) => (m.id === p.messageId ? { ...m, lu: true } : m)),
                 );
             });
+            socket.on('message:delivered', (p: { messageId: string }) => {
+                setMessages((prev) =>
+                    prev.map((m) => (m.id === p.messageId ? { ...m, remis: true } : m)),
+                );
+            });
             // Modification / suppression : les deux parties voient en direct
             socket.on('message:updated', (updated: Message) => {
                 if (updated.conversationId !== id) return;
@@ -277,6 +282,7 @@ export default function ConversationScreen() {
             setSocketReady(false);
             socketRef.current?.off('message:new');
             socketRef.current?.off('message:read');
+            socketRef.current?.off('message:delivered');
             socketRef.current?.off('message:updated');
             socketRef.current?.off('message:deleted');
             socketRef.current?.off('typing:start');
@@ -1522,10 +1528,16 @@ function MessageBubble({
                     </Text>
                     {mine &&
                         (message.pending ? (
+                            // 🕐 en cours d'envoi
                             <Clock3 size={11} color="rgba(255,255,255,0.75)" strokeWidth={2.2} />
                         ) : message.lu ? (
+                            // ✓✓ bleu = lu
                             <CheckCheck size={13} color="#7EE0FF" strokeWidth={2.4} />
+                        ) : message.remis ? (
+                            // ✓✓ gris = remis (destinataire en ligne, pas encore ouvert)
+                            <CheckCheck size={13} color="rgba(255,255,255,0.8)" strokeWidth={2.4} />
                         ) : (
+                            // ✓ = envoyé au serveur
                             <Check size={13} color="rgba(255,255,255,0.8)" strokeWidth={2.4} />
                         ))}
                 </View>

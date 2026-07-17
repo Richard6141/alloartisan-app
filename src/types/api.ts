@@ -238,6 +238,8 @@ export interface Message {
     mediaDuree?: number | null;
     latitude?: number | null;
     longitude?: number | null;
+    /** Remis au destinataire (app en ligne) → ✓✓ gris */
+    remis?: boolean;
     lu: boolean;
     createdAt: string;
     /** Actions type WhatsApp */
