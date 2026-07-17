@@ -104,9 +104,15 @@ async function refreshTokens(): Promise<string | null> {
         );
         await tokenStorage.setTokens(data.access_token, data.refresh_token);
         return data.access_token;
-    } catch {
-        await tokenStorage.clear();
-        onSessionExpired?.();
+    } catch (e) {
+        const status = (e as AxiosError)?.response?.status;
+        // Déconnecter UNIQUEMENT si la session est vraiment invalide (401/403).
+        // Sur une erreur réseau / timeout / 5xx (fréquent en arrière-plan ou en
+        // réseau instable), on GARDE les tokens → plus de déconnexion intempestive.
+        if (status === 401 || status === 403) {
+            await tokenStorage.clear();
+            onSessionExpired?.();
+        }
         return null;
     }
 }

@@ -82,12 +82,18 @@ export const useAuth = create<AuthState>((set, get) => ({
             return;
         }
 
+        // On a un token en stock → on considère l'utilisateur CONNECTÉ (optimiste).
+        // Le profil se charge derrière. Une panne réseau (ou l'app tuée par
+        // Android puis relancée hors ligne) ne doit PAS déconnecter : sinon on
+        // perd la session ET le token FCM (plus de notifications).
+        set({ status: 'authenticated', user: null });
         try {
             const { data } = await api.get<User>('/users/me');
-            set({ status: 'authenticated', user: data });
+            set({ user: data });
         } catch {
-            // Token invalide et refresh échoué → invité (l'intercepteur a nettoyé)
-            set({ status: 'guest', user: null });
+            // Si la session est VRAIMENT morte, l'intercepteur (401 au refresh)
+            // a déjà déclenché onSessionExpired → 'guest'. Sinon (réseau/serveur),
+            // on RESTE connecté en mode dégradé, le profil se rechargera seul.
         }
     },
 
@@ -105,11 +111,14 @@ export const useAuth = create<AuthState>((set, get) => ({
         } catch {
             return false;
         }
+        // Déverrouillage réussi → connecté (optimiste). Une erreur réseau au
+        // rechargement du profil ne doit pas renvoyer vers l'écran de connexion.
+        set({ status: 'authenticated' });
         try {
             const { data } = await api.get<User>('/users/me');
-            set({ status: 'authenticated', user: data });
+            set({ user: data });
         } catch {
-            set({ status: 'guest', user: null });
+            // Session morte → onSessionExpired a basculé en 'guest'. Sinon on reste.
         }
         return true;
     },
