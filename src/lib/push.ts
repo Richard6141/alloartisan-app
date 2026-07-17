@@ -102,6 +102,8 @@ function routeFromData(data: Record<string, string> | undefined, router: AppRout
         });
     } else if (d.bookingId) {
         router.push({ pathname: '/booking/[id]', params: { id: d.bookingId } });
+    } else if (d.screen === 'express') {
+        router.push('/express/opportunites');
     } else if (d.screen === 'mes-annonces') {
         router.push('/mes-annonces');
     } else if (d.screen === 'main-doeuvre') {

@@ -237,7 +237,7 @@ export default function HomeScreen() {
                 <View style={styles.bigActions}>
                     <Pressable
                         onPress={() =>
-                            router.push({ pathname: '/(tabs)/recherche', params: { urgence: '1' } })
+                            goAuthOr({ pathname: '/express/nouvelle', params: { urgence: '1' } })
                         }
                         style={({ pressed }) => [
                             styles.bigAction,
@@ -245,7 +245,7 @@ export default function HomeScreen() {
                             pressed && { transform: [{ scale: 0.98 }] },
                         ]}
                         accessibilityRole="button"
-                        accessibilityLabel="SOS urgence : un artisan en moins d'une heure"
+                        accessibilityLabel="SOS urgence : on prévient les artisans proches, le premier qui accepte vous rappelle"
                     >
                         <View style={[styles.bigActionIcon, { backgroundColor: palette.red600 }]}>
                             <Zap size={15} color={palette.white} fill={palette.white} strokeWidth={0} />
@@ -258,7 +258,7 @@ export default function HomeScreen() {
                                 SOS Urgence
                             </Text>
                             <Text style={styles.bigActionText} numberOfLines={1}>
-                                En moins d'1 h
+                                On vous trouve quelqu'un
                             </Text>
                         </View>
                     </Pressable>
@@ -286,6 +286,32 @@ export default function HomeScreen() {
                         </View>
                     </Pressable>
                 </View>
+
+                {/* ─── Demandes express : réservé aux ARTISANS (leads instantanés) ─── */}
+                {user?.role === 'ARTISAN' && (
+                    <Pressable
+                        onPress={() => router.push('/express/opportunites')}
+                        style={({ pressed }) => [
+                            styles.moCard,
+                            pressed && { transform: [{ scale: 0.99 }] },
+                        ]}
+                        accessibilityRole="button"
+                        accessibilityLabel="Voir les demandes express des clients près de vous"
+                    >
+                        <View style={[styles.bigActionIcon, { backgroundColor: palette.red600 }]}>
+                            <Zap size={15} color={palette.white} fill={palette.white} strokeWidth={0} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.bigActionTitle} numberOfLines={1}>
+                                Demandes express près de vous
+                            </Text>
+                            <Text style={styles.bigActionText} numberOfLines={1}>
+                                Le premier qui accepte décroche la mission
+                            </Text>
+                        </View>
+                        <ChevronRight size={17} color={colors.textMuted} strokeWidth={2.2} />
+                    </Pressable>
+                )}
 
                 {/* ─── Main-d'œuvre : réservé aux ARTISANS (renfort de chantier) ─── */}
                 {user?.role === 'ARTISAN' && (
