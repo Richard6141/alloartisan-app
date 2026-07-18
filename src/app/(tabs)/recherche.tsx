@@ -184,6 +184,22 @@ export default function RechercheScreen() {
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
+            {/* Sélecteur Artisans | Main-d'œuvre : on reste sur les artisans ici,
+                le mode Main-d'œuvre ouvre l'annuaire des aides/ouvriers proches */}
+            <View style={styles.modeSwitch}>
+                <View style={[styles.modeBtn, styles.modeBtnActive]}>
+                    <Text style={[styles.modeTxt, styles.modeTxtActive]}>Artisans</Text>
+                </View>
+                <Pressable
+                    style={styles.modeBtn}
+                    onPress={() => router.push('/main-doeuvre')}
+                    accessibilityRole="button"
+                    accessibilityLabel="Chercher de la main-d'œuvre (aides et ouvriers)"
+                >
+                    <Text style={styles.modeTxt}>Main-d’œuvre</Text>
+                </Pressable>
+            </View>
+
             {/* Barre de recherche — en mode proximité elle filtre les artisans proches */}
             <View style={styles.searchWrap}>
                 <View style={styles.searchBar}>
@@ -431,6 +447,32 @@ function Chip({
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
+    modeSwitch: {
+        flexDirection: 'row',
+        gap: spacing.xs,
+        marginHorizontal: spacing.xl,
+        marginTop: spacing.md,
+        padding: 3,
+        borderRadius: radii.full,
+        backgroundColor: colors.surfaceMuted,
+    },
+    modeBtn: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: spacing.sm,
+        borderRadius: radii.full,
+    },
+    modeBtnActive: {
+        backgroundColor: colors.surface,
+        ...shadows.card,
+    },
+    modeTxt: {
+        fontFamily: typography.bodySemiBold,
+        fontSize: fontSizes.sm,
+        color: colors.textSecondary,
+    },
+    modeTxtActive: { color: colors.primary },
     searchWrap: {
         paddingHorizontal: spacing.xl,
         paddingTop: spacing.md,
