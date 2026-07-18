@@ -43,6 +43,8 @@ export interface User {
     emailVerified: boolean;
     profilComplet: boolean;
     codeParrainage?: string | null;
+    /** Double authentification (TOTP) activée sur ce compte */
+    mfaEnabled?: boolean;
 }
 
 export interface CategorieMetier {

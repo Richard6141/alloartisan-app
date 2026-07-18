@@ -43,7 +43,13 @@ export default function LoginScreen() {
         setError(null);
         setLoading(true);
         try {
-            await login(email.trim().toLowerCase(), password);
+            const res = await login(email.trim().toLowerCase(), password);
+            // Compte avec double authentification → étape de saisie du code
+            if (res?.mfaRequired) {
+                router.push({ pathname: '/(auth)/mfa', params: { mfaToken: res.mfaToken } });
+                setLoading(false);
+                return;
+            }
             // Le spinner reste affiché pendant l'ouverture des onglets
             // (l'écran se démonte tout seul) : ne pas le couper ici
             router.replace('/(tabs)');

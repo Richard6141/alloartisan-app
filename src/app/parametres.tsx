@@ -20,6 +20,7 @@ import {
     User as UserIcon,
     MapPin,
     Fingerprint,
+    ShieldCheck,
     Trash2,
 } from 'lucide-react-native';
 import { api, ApiError } from '../lib/api';
@@ -149,6 +150,28 @@ function SettingsForm() {
 
                 <Text style={styles.sectionLabel}>Sécurité</Text>
                 <BiometricToggle />
+                <Pressable
+                    onPress={() => router.push('/securite-2fa')}
+                    accessibilityRole="button"
+                    accessibilityLabel="Double authentification"
+                >
+                    <Card style={styles.mfaCard}>
+                        <ShieldCheck
+                            size={20}
+                            color={user?.mfaEnabled ? colors.success : colors.primary}
+                            strokeWidth={2}
+                        />
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.bioTitle}>Double authentification</Text>
+                            <Text style={styles.bioText}>
+                                {user?.mfaEnabled
+                                    ? 'Activée · un code est demandé à la connexion'
+                                    : 'Ajoutez un code de sécurité à la connexion'}
+                            </Text>
+                        </View>
+                        <ChevronRight size={17} color={colors.textMuted} strokeWidth={2.2} />
+                    </Card>
+                </Pressable>
 
                 <Text style={styles.sectionLabel}>Localisation</Text>
                 {isArtisan ? (
@@ -218,11 +241,13 @@ function SettingsForm() {
 function DangerZone() {
     const router = useRouter();
     const deleteAccount = useAuth((s) => s.deleteAccount);
+    const mfaEnabled = useAuth((s) => s.user?.mfaEnabled === true);
     const [open, setOpen] = useState(false);
     const [password, setPassword] = useState('');
+    const [mfaCode, setMfaCode] = useState('');
 
     const del = useMutation({
-        mutationFn: () => deleteAccount(password),
+        mutationFn: () => deleteAccount(password, mfaEnabled ? mfaCode.trim() : undefined),
         onSuccess: () => {
             Alert.alert('Compte supprimé', 'Votre compte a été supprimé. À bientôt.');
             router.replace('/(tabs)');
@@ -237,6 +262,10 @@ function DangerZone() {
     const confirm = () => {
         if (!password) {
             Alert.alert('Mot de passe requis', 'Saisissez votre mot de passe pour confirmer.');
+            return;
+        }
+        if (mfaEnabled && mfaCode.trim().length !== 6) {
+            Alert.alert('Code 2FA requis', 'Saisissez le code à 6 chiffres de votre application.');
             return;
         }
         Alert.alert(
@@ -279,6 +308,16 @@ function DangerZone() {
                         secureTextEntry
                         autoCapitalize="none"
                     />
+                    {mfaEnabled && (
+                        <Input
+                            label="Code 2FA"
+                            placeholder="123456"
+                            keyboardType="number-pad"
+                            value={mfaCode}
+                            onChangeText={(v) => setMfaCode(v.replace(/\D/g, '').slice(0, 6))}
+                            maxLength={6}
+                        />
+                    )}
                     <View style={styles.dangerActions}>
                         <Button
                             title="Annuler"
@@ -432,6 +471,11 @@ const styles = StyleSheet.create({
         marginTop: spacing.sm,
     },
     bioCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.md,
+    },
+    mfaCard: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.md,

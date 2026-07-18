@@ -31,9 +31,16 @@ interface AuthState {
     /** Reverrouille l'app (retour en avant-plan avec empreinte activée) */
     lock: () => void;
     completeOnboarding: () => Promise<void>;
-    /** Supprime définitivement le compte (mot de passe requis) */
-    deleteAccount: (password: string) => Promise<void>;
-    login: (email: string, password: string) => Promise<void>;
+    /** Supprime définitivement le compte (mot de passe + code 2FA si activé) */
+    deleteAccount: (password: string, mfaCode?: string) => Promise<void>;
+    /**
+     * Connexion. Retourne `{ mfaRequired, mfaToken }` si le compte a la double
+     * authentification activée → l'appelant enchaîne sur l'écran de saisie du
+     * code puis `completeMfaLogin`. Sinon connecte directement (retour void).
+     */
+    login: (email: string, password: string) => Promise<{ mfaRequired: true; mfaToken: string } | void>;
+    /** Seconde étape du login 2FA : vérifie le code TOTP et ouvre la session */
+    completeMfaLogin: (mfaToken: string, code: string) => Promise<void>;
     /** Connexion / inscription via Google */
     loginWithGoogle: (role?: 'CLIENT' | 'ARTISAN') => Promise<void>;
     register: (payload: { email: string; password: string; role: 'CLIENT' | 'ARTISAN' }) => Promise<void>;
@@ -129,16 +136,27 @@ export const useAuth = create<AuthState>((set, get) => ({
     },
 
     async login(email, password) {
-        const { data } = await api.post<AuthTokens & { mfaRequired?: boolean }>('/auth/login', {
-            email,
-            password,
-        });
-        if (!data.access_token) {
-            // Compte avec MFA activé — parcours dédié à venir
-            throw new Error(
-                'Ce compte utilise la double authentification, non prise en charge dans cette version.',
-            );
+        const { data } = await api.post<
+            Partial<AuthTokens> & { mfa_required?: boolean; mfa_token?: string }
+        >('/auth/login', { email, password });
+        // Compte protégé par 2FA : pas de tokens, un mfa_token temporaire à
+        // échanger contre le code TOTP sur l'écran dédié.
+        if (data.mfa_required && data.mfa_token) {
+            return { mfaRequired: true, mfaToken: data.mfa_token };
         }
+        if (!data.access_token || !data.refresh_token) {
+            throw new Error('Réponse de connexion inattendue. Réessayez.');
+        }
+        await tokenStorage.setTokens(data.access_token, data.refresh_token);
+        const { data: user } = await api.get<User>('/users/me');
+        set({ status: 'authenticated', user });
+    },
+
+    async completeMfaLogin(mfaToken, code) {
+        const { data } = await api.post<AuthTokens>('/auth/login/mfa', {
+            mfa_token: mfaToken,
+            code,
+        });
         await tokenStorage.setTokens(data.access_token, data.refresh_token);
         const { data: user } = await api.get<User>('/users/me');
         set({ status: 'authenticated', user });
@@ -200,10 +218,13 @@ export const useAuth = create<AuthState>((set, get) => ({
         set({ status: 'guest', user: null });
     },
 
-    async deleteAccount(password: string) {
-        // Le serveur exige le mot de passe (vérifié en argon) puis anonymise
-        // + soft-delete le compte. Ensuite on nettoie la session localement.
-        await api.delete('/users/me', { data: { password } });
+    async deleteAccount(password: string, mfaCode?: string) {
+        // Le serveur exige le mot de passe (vérifié en argon) — et le code 2FA
+        // si la double authentification est activée — puis anonymise + soft-delete
+        // le compte. Ensuite on nettoie la session localement.
+        await api.delete('/users/me', {
+            data: { password, ...(mfaCode ? { mfaCode } : {}) },
+        });
         await unregisterForPush();
         await tokenStorage.clear();
         closeSockets();
