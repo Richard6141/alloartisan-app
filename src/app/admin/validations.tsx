@@ -44,9 +44,11 @@ import {
     useRejectArtisan,
     useVerifyCertification,
     useUnlockCertification,
+    useCheckIdentite,
     usePendingMetiers,
     useValidateMetier,
     type AdminCertification,
+    type IdentiteMatch,
     type PendingArtisan,
     type PendingMetier,
 } from '../../features/admin/hooks';
@@ -205,9 +207,16 @@ function ValidationsContent() {
         );
     };
 
-    const validerDocument = (certification: AdminCertification) => {
+    const validerDocument = (
+        certification: AdminCertification,
+        extra?: { numeroPiece?: string },
+    ) => {
         verifyCertification.mutate(
-            { certificationId: certification.id, verifie: true },
+            {
+                certificationId: certification.id,
+                verifie: true,
+                numeroPiece: extra?.numeroPiece,
+            },
             { onError: (e) => erreur(e, 'Validation impossible') },
         );
     };
@@ -367,8 +376,9 @@ function ValidationsContent() {
                                     metierNom={null}
                                     busy={busy}
                                     validerLoading={documentValidating(c.id)}
+                                    excludeArtisanId={c.artisan?.id}
                                     onOpen={() => ouvrirDocument(c.documentUrl)}
-                                    onValider={() => validerDocument(c)}
+                                    onValider={(extra) => validerDocument(c, extra)}
                                     onRejeter={() =>
                                         setRejet({ kind: 'certification', id: c.id, nom: c.titre })
                                     }
@@ -504,7 +514,7 @@ function Dossier({
     documentUnlocking: (id: string) => boolean;
     onDeverrouillerDocument: (c: AdminCertification) => void;
     onOpenDocument: (url: string | null | undefined) => void;
-    onValiderDocument: (c: AdminCertification) => void;
+    onValiderDocument: (c: AdminCertification, extra?: { numeroPiece?: string }) => void;
     onRejeterDocument: (c: AdminCertification) => void;
     onValider: () => void;
     onRejeter: () => void;
@@ -566,8 +576,9 @@ function Dossier({
                         busy={busy}
                         validerLoading={documentValidating(c.id)}
                         deverrouillerLoading={documentUnlocking(c.id)}
+                        excludeArtisanId={artisan.id}
                         onOpen={() => onOpenDocument(c.documentUrl)}
-                        onValider={() => onValiderDocument(c)}
+                        onValider={(extra) => onValiderDocument(c, extra)}
                         onRejeter={() => onRejeterDocument(c)}
                         onDeverrouiller={() => onDeverrouillerDocument(c)}
                     />
@@ -612,6 +623,7 @@ function GrandDocument({
     busy,
     validerLoading,
     deverrouillerLoading,
+    excludeArtisanId,
     onOpen,
     onValider,
     onRejeter,
@@ -622,13 +634,32 @@ function GrandDocument({
     busy: boolean;
     validerLoading: boolean;
     deverrouillerLoading?: boolean;
+    excludeArtisanId?: string;
     onOpen: () => void;
-    onValider: () => void;
+    onValider: (extra?: { numeroPiece?: string }) => void;
     onRejeter: () => void;
     onDeverrouiller?: () => void;
 }) {
     const estImage = !!c.documentUrl && !c.documentUrl.toLowerCase().endsWith('.pdf');
     const statut = c.statutVerification;
+    const isIdentite = c.type === 'IDENTITE';
+
+    // Anti-doublon (pièce d'identité) : le validateur saisit le n° lu sur la
+    // pièce ; on interroge l'index (hashes) pour repérer un compte réutilisant
+    // la même identité, puis le n° est indexé à la validation.
+    const [numero, setNumero] = useState('');
+    const [matches, setMatches] = useState<IdentiteMatch[] | null>(null);
+    const checkIdentite = useCheckIdentite();
+    const lancerVerif = () => {
+        if (numero.trim().length < 4) {
+            Alert.alert('Numéro requis', 'Saisissez le numéro de la pièce (au moins 4 caractères).');
+            return;
+        }
+        checkIdentite.mutate(
+            { numeroPiece: numero.trim(), excludeArtisanId },
+            { onSuccess: (m) => setMatches(m), onError: () => setMatches(null) },
+        );
+    };
 
     return (
         <Card style={{ gap: spacing.sm, padding: spacing.md }}>
@@ -708,6 +739,59 @@ function GrandDocument({
                 />
             )}
 
+            {/* Anti-doublon : cette identité correspond-elle à un autre compte ? */}
+            {isIdentite && statut !== 'VALIDEE' && (
+                <View style={styles.identiteBox}>
+                    <View style={styles.identiteRow}>
+                        <TextInput
+                            style={styles.identiteInput}
+                            placeholder="N° pièce d'identité (lu sur le document)"
+                            placeholderTextColor={colors.textMuted}
+                            value={numero}
+                            onChangeText={(v) => {
+                                setNumero(v);
+                                setMatches(null);
+                            }}
+                            autoCapitalize="characters"
+                            autoCorrect={false}
+                        />
+                        <Button
+                            title="Vérifier"
+                            size="sm"
+                            variant="secondary"
+                            loading={checkIdentite.isPending}
+                            onPress={lancerVerif}
+                        />
+                    </View>
+                    {matches != null &&
+                        (matches.length === 0 ? (
+                            <Text style={styles.identiteOk}>
+                                ✓ Aucun doublon connu pour ce numéro.
+                            </Text>
+                        ) : (
+                            <View style={styles.identiteWarn}>
+                                <ShieldAlert size={15} color={palette.red700} strokeWidth={2.2} />
+                                <Text style={styles.identiteWarnTxt}>
+                                    ⚠️ Déjà enregistré sur {matches.length} autre
+                                    {matches.length > 1 ? 's' : ''} compte
+                                    {matches.length > 1 ? 's' : ''} :{' '}
+                                    {matches
+                                        .map(
+                                            (m) =>
+                                                `${m.nomApercu ?? 'compte'}${m.numeroApercu ? ` (${m.numeroApercu})` : ''}`,
+                                        )
+                                        .join(', ')}
+                                    . Vérifiez avant de valider.
+                                </Text>
+                            </View>
+                        ))}
+                    <Text style={styles.identiteHint}>
+                        Le numéro n'est pas stocké en clair : seule une empreinte (hash) sert à
+                        détecter les doublons.
+                    </Text>
+                </View>
+            )}
+
             {/* Décision sur CE document */}
             {statut !== 'VALIDEE' && (
                 <View style={styles.actionsRow}>
@@ -727,7 +811,13 @@ function GrandDocument({
                         variant="secondary"
                         size="sm"
                         icon={<Check size={14} color={colors.primary} strokeWidth={2.6} />}
-                        onPress={onValider}
+                        onPress={() =>
+                            onValider(
+                                isIdentite
+                                    ? { numeroPiece: numero.trim() || undefined }
+                                    : undefined,
+                            )
+                        }
                         disabled={busy && !validerLoading}
                         loading={validerLoading}
                         style={{ flex: 2 }}
@@ -936,6 +1026,54 @@ const styles = StyleSheet.create({
     actionsRow: {
         flexDirection: 'row',
         gap: spacing.md,
+    },
+    identiteBox: {
+        gap: spacing.sm,
+        backgroundColor: colors.surfaceMuted,
+        borderRadius: radii.md,
+        padding: spacing.sm,
+    },
+    identiteRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+    },
+    identiteInput: {
+        flex: 1,
+        height: 40,
+        borderRadius: radii.md,
+        borderWidth: 1,
+        borderColor: colors.border,
+        backgroundColor: colors.surface,
+        paddingHorizontal: spacing.md,
+        fontFamily: typography.body,
+        fontSize: fontSizes.sm,
+        color: colors.text,
+    },
+    identiteOk: {
+        fontFamily: typography.bodySemiBold,
+        fontSize: fontSizes.xs,
+        color: palette.green700,
+    },
+    identiteWarn: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: spacing.xs,
+        backgroundColor: colors.dangerSoft,
+        borderRadius: radii.md,
+        padding: spacing.sm,
+    },
+    identiteWarnTxt: {
+        flex: 1,
+        fontFamily: typography.bodyMedium,
+        fontSize: fontSizes.xs,
+        lineHeight: lineHeights.xs + 3,
+        color: palette.red700,
+    },
+    identiteHint: {
+        fontFamily: typography.body,
+        fontSize: fontSizes.xs - 1,
+        color: colors.textMuted,
     },
     docOwner: {
         fontFamily: typography.bodySemiBold,

@@ -239,12 +239,44 @@ export function useVerifyCertification() {
             certificationId: string;
             verifie: boolean;
             raison?: string;
+            // Validation d'une pièce d'IDENTITE : indexe l'identité (anti-doublon)
+            numeroPiece?: string;
+            dateNaissance?: string;
         }) => {
             await api.patch(`/certifications/admin/${input.certificationId}/verify`, {
                 verifie: input.verifie,
                 raison: input.raison,
+                numeroPiece: input.numeroPiece,
+                dateNaissance: input.dateNaissance,
             });
         },
         onSuccess: invalidate,
+    });
+}
+
+/** Empreinte d'identité : une identité correspond-elle déjà à un autre compte ? */
+export interface IdentiteMatch {
+    artisanId: string | null;
+    userId: string;
+    nomApercu: string | null;
+    numeroApercu: string | null;
+    createdAt: string;
+    motif: 'numero' | 'nom';
+}
+
+export function useCheckIdentite() {
+    return useMutation({
+        mutationFn: async (input: {
+            numeroPiece?: string;
+            nom?: string;
+            dateNaissance?: string;
+            excludeArtisanId?: string;
+        }) => {
+            const { data } = await api.post<{ matches: IdentiteMatch[] }>(
+                '/admin/fraud/identite/check',
+                input,
+            );
+            return data.matches;
+        },
     });
 }
