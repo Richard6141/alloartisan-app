@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     View,
     Text,
@@ -40,6 +40,9 @@ import { useChatPrefs, TEXT_SCALE_FACTOR } from '../../stores/chatPrefs';
 import {
     ArrowLeft,
     SendHorizonal,
+    Search,
+    ChevronUp,
+    ChevronDown,
     Check,
     CheckCheck,
     Clock3,
@@ -170,6 +173,10 @@ export default function ConversationScreen() {
     const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
     const [editing, setEditing] = useState<ChatMessage | null>(null);
     const [viewerUri, setViewerUri] = useState<string | null>(null);
+    // Recherche dans la conversation (messages texte chargés)
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [matchIdx, setMatchIdx] = useState(0);
     // Médias révélés manuellement quand le téléchargement auto est désactivé
     const [revealed, setRevealed] = useState<Set<string>>(new Set());
     const autoDownloadMedia = useChatPrefs((s) => s.autoDownloadMedia);
@@ -756,39 +763,147 @@ export default function ConversationScreen() {
 
     const nom = nomParam || 'Conversation';
 
+    // ─── Recherche dans la conversation ──────────────────────────────────────
+    // Indices (dans `messages`) des messages texte contenant la requête.
+    const searchMatches = useMemo(() => {
+        const q = searchQuery.trim().toLowerCase();
+        if (!q) return [] as number[];
+        const out: number[] = [];
+        messages.forEach((m, i) => {
+            if (!m.supprime && m.type === 'text' && (m.contenu ?? '').toLowerCase().includes(q)) {
+                out.push(i);
+            }
+        });
+        return out;
+    }, [messages, searchQuery]);
+
+    // Position courante bornée (0 = plus ancien résultat) ; on part du plus récent
+    const currentMatch = searchMatches.length ? Math.min(matchIdx, searchMatches.length - 1) : 0;
+
+    // Recadre le message trouvé au centre de l'écran
+    useEffect(() => {
+        if (!searchOpen || searchMatches.length === 0) return;
+        const target = searchMatches[currentMatch];
+        if (target == null) return;
+        try {
+            listRef.current?.scrollToIndex({ index: target, viewPosition: 0.5, animated: true });
+        } catch {
+            // hauteurs variables : le repli onScrollToIndexFailed s'en charge
+        }
+    }, [searchOpen, searchMatches, currentMatch]);
+
+    const closeSearch = () => {
+        setSearchOpen(false);
+        setSearchQuery('');
+        setMatchIdx(0);
+    };
+
     return (
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
             <Stack.Screen options={{ headerShown: false }} />
 
-            {/* En-tête */}
-            <View style={styles.header}>
-                <Pressable
-                    onPress={() => router.back()}
-                    hitSlop={12}
-                    style={styles.backButton}
-                    accessibilityRole="button"
-                    accessibilityLabel="Retour"
-                >
-                    <ArrowLeft size={22} color={colors.text} strokeWidth={2} />
-                </Pressable>
-                <Avatar name={nom} size={36} />
-                <View style={{ flex: 1 }}>
-                    <Text style={styles.headerName} numberOfLines={1}>
-                        {nom}
-                    </Text>
-                    <Text
-                        style={[styles.headerStatus, typingMode && { color: palette.green600 }]}
+            {/* En-tête — mode normal ou mode recherche */}
+            {searchOpen ? (
+                <View style={styles.header}>
+                    <Pressable
+                        onPress={closeSearch}
+                        hitSlop={12}
+                        style={styles.backButton}
+                        accessibilityRole="button"
+                        accessibilityLabel="Fermer la recherche"
                     >
-                        {typingMode === 'audio'
-                            ? '🎤 enregistre un vocal…'
-                            : typingMode
-                              ? 'écrit…'
-                              : 'sur AlloArtisan'}
-                    </Text>
+                        <ArrowLeft size={22} color={colors.text} strokeWidth={2} />
+                    </Pressable>
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Rechercher dans la discussion…"
+                        placeholderTextColor={colors.textMuted}
+                        value={searchQuery}
+                        onChangeText={(v) => {
+                            setSearchQuery(v);
+                            setMatchIdx(Number.MAX_SAFE_INTEGER); // repart du résultat le plus récent
+                        }}
+                        autoFocus
+                        returnKeyType="search"
+                        accessibilityLabel="Recherche dans la discussion"
+                    />
+                    {searchQuery.trim().length > 0 && (
+                        <>
+                            <Text style={styles.searchCount}>
+                                {searchMatches.length ? `${currentMatch + 1}/${searchMatches.length}` : '0'}
+                            </Text>
+                            <Pressable
+                                onPress={() => setMatchIdx(Math.max(0, currentMatch - 1))}
+                                disabled={searchMatches.length === 0}
+                                hitSlop={8}
+                                style={styles.searchNav}
+                                accessibilityRole="button"
+                                accessibilityLabel="Résultat précédent"
+                            >
+                                <ChevronUp
+                                    size={20}
+                                    color={searchMatches.length ? colors.text : colors.textMuted}
+                                    strokeWidth={2}
+                                />
+                            </Pressable>
+                            <Pressable
+                                onPress={() =>
+                                    setMatchIdx(Math.min(searchMatches.length - 1, currentMatch + 1))
+                                }
+                                disabled={searchMatches.length === 0}
+                                hitSlop={8}
+                                style={styles.searchNav}
+                                accessibilityRole="button"
+                                accessibilityLabel="Résultat suivant"
+                            >
+                                <ChevronDown
+                                    size={20}
+                                    color={searchMatches.length ? colors.text : colors.textMuted}
+                                    strokeWidth={2}
+                                />
+                            </Pressable>
+                        </>
+                    )}
                 </View>
-                {/* Pas de bouton d'appel : les échanges restent sur la plateforme
-                    (anti-désintermédiation). Le numéro n'est jamais exposé. */}
-            </View>
+            ) : (
+                <View style={styles.header}>
+                    <Pressable
+                        onPress={() => router.back()}
+                        hitSlop={12}
+                        style={styles.backButton}
+                        accessibilityRole="button"
+                        accessibilityLabel="Retour"
+                    >
+                        <ArrowLeft size={22} color={colors.text} strokeWidth={2} />
+                    </Pressable>
+                    <Avatar name={nom} size={36} />
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.headerName} numberOfLines={1}>
+                            {nom}
+                        </Text>
+                        <Text
+                            style={[styles.headerStatus, typingMode && { color: palette.green600 }]}
+                        >
+                            {typingMode === 'audio'
+                                ? '🎤 enregistre un vocal…'
+                                : typingMode
+                                  ? 'écrit…'
+                                  : 'sur AlloArtisan'}
+                        </Text>
+                    </View>
+                    {/* Recherche dans la discussion (pas de bouton d'appel :
+                        anti-désintermédiation, le numéro n'est jamais exposé) */}
+                    <Pressable
+                        onPress={() => setSearchOpen(true)}
+                        hitSlop={12}
+                        style={styles.backButton}
+                        accessibilityRole="button"
+                        accessibilityLabel="Rechercher dans la discussion"
+                    >
+                        <Search size={20} color={colors.text} strokeWidth={2} />
+                    </Pressable>
+                </View>
+            )}
 
             {/* Paywall : conversation verrouillée tant que l'artisan n'a pas débloqué */}
             {locked && history?.gate ? (
@@ -826,9 +941,18 @@ export default function ConversationScreen() {
                         keyExtractor={(item) => item.id}
                         style={styles.chatArea}
                         contentContainerStyle={styles.messages}
-                        onContentSizeChange={() =>
-                            listRef.current?.scrollToEnd({ animated: false })
-                        }
+                        onContentSizeChange={() => {
+                            // Pendant une recherche, on ne recolle pas au bas :
+                            // on laisse le résultat recadré à l'écran.
+                            if (!searchOpen) listRef.current?.scrollToEnd({ animated: false });
+                        }}
+                        onScrollToIndexFailed={(info) => {
+                            // Hauteurs variables : approximation puis recadrage
+                            listRef.current?.scrollToOffset({
+                                offset: info.averageItemLength * info.index,
+                                animated: true,
+                            });
+                        }}
                         ListEmptyComponent={
                             <View style={styles.emptyHint}>
                                 <Text style={styles.emptyHintText}>
@@ -842,6 +966,7 @@ export default function ConversationScreen() {
                                 message={item}
                                 mine={item.senderId === userId}
                                 previous={messages[index - 1]}
+                                highlighted={searchOpen && searchMatches[currentMatch] === index}
                                 fontScale={TEXT_SCALE_FACTOR[textScale]}
                                 mediaVisible={
                                     autoDownloadMedia ||
@@ -1278,6 +1403,7 @@ function MessageBubble({
     message,
     mine,
     previous,
+    highlighted,
     fontScale,
     mediaVisible,
     onReveal,
@@ -1288,6 +1414,7 @@ function MessageBubble({
     message: ChatMessage;
     mine: boolean;
     previous?: ChatMessage;
+    highlighted?: boolean;
     fontScale: number;
     mediaVisible: boolean;
     onReveal: () => void;
@@ -1404,6 +1531,7 @@ function MessageBubble({
                             styles.bubble,
                             mine ? styles.bubbleMine : styles.bubbleTheirs,
                             message.type !== 'text' && styles.bubbleMedia,
+                            highlighted && styles.bubbleHighlight,
                         ]}
                     >
                 {/* Citation (réponse à un message) */}
@@ -1678,6 +1806,25 @@ const styles = StyleSheet.create({
         color: colors.textMuted,
         marginTop: 1,
     },
+    searchInput: {
+        flex: 1,
+        fontFamily: typography.body,
+        fontSize: fontSizes.base,
+        color: colors.text,
+        paddingVertical: spacing.xs,
+    },
+    searchCount: {
+        fontFamily: typography.bodySemiBold,
+        fontSize: fontSizes.xs,
+        color: colors.textSecondary,
+        marginRight: spacing.xs,
+    },
+    searchNav: {
+        width: 32,
+        height: 32,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     chatArea: {
         flex: 1,
         backgroundColor: '#E8EDF5', // fond de discussion (façon WhatsApp, teinté marque)
@@ -1715,6 +1862,10 @@ const styles = StyleSheet.create({
         fontSize: fontSizes.xs - 1,
         color: colors.textSecondary,
         textTransform: 'capitalize',
+    },
+    bubbleHighlight: {
+        borderWidth: 2,
+        borderColor: colors.accent,
     },
     bubble: {
         maxWidth: '85%',
