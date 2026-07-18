@@ -142,6 +142,21 @@ function AdminContent() {
                 </Card>
             </Pressable>
 
+            <Pressable onPress={() => router.push('/admin/fraude')} accessibilityRole="button">
+                <Card style={styles.queueCard}>
+                    <View style={styles.queueIcon}>
+                        <ShieldAlert size={19} color={colors.primary} strokeWidth={2} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.queueTitle}>Anti-fraude</Text>
+                        <Text style={styles.queueText}>
+                            Artisans à haut risque et scan des comptes suspects
+                        </Text>
+                    </View>
+                    <ChevronRight size={18} color={colors.textMuted} strokeWidth={2.2} />
+                </Card>
+            </Pressable>
+
             {/* KPI plateforme */}
             <Text style={styles.sectionTitle}>La plateforme</Text>
             <View style={styles.grid}>
