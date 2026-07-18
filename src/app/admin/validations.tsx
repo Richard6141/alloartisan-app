@@ -45,6 +45,7 @@ import {
     useVerifyCertification,
     useUnlockCertification,
     useCheckIdentite,
+    useCertificationDocMatches,
     usePendingMetiers,
     useValidateMetier,
     type AdminCertification,
@@ -650,6 +651,8 @@ function GrandDocument({
     const [numero, setNumero] = useState('');
     const [matches, setMatches] = useState<IdentiteMatch[] | null>(null);
     const checkIdentite = useCheckIdentite();
+    // Détection AUTOMATIQUE : l'image de la pièce a-t-elle déjà été soumise ?
+    const docMatches = useCertificationDocMatches(c.id, isIdentite && statut !== 'VALIDEE');
     const lancerVerif = () => {
         if (numero.trim().length < 4) {
             Alert.alert('Numéro requis', 'Saisissez le numéro de la pièce (au moins 4 caractères).');
@@ -737,6 +740,23 @@ function GrandDocument({
                     loading={deverrouillerLoading}
                     fullWidth
                 />
+            )}
+
+            {/* Anti-doublon AUTOMATIQUE : image de la pièce déjà soumise ? */}
+            {isIdentite && statut !== 'VALIDEE' && (docMatches.data?.length ?? 0) > 0 && (
+                <View style={styles.identiteWarn}>
+                    <ShieldAlert size={15} color={palette.red700} strokeWidth={2.2} />
+                    <Text style={styles.identiteWarnTxt}>
+                        ⚠️ Image déjà soumise par {docMatches.data!.length} autre
+                        {docMatches.data!.length > 1 ? 's' : ''} compte
+                        {docMatches.data!.length > 1 ? 's' : ''} (
+                        {docMatches.data!.some((m) => m.motif === 'image_exacte')
+                            ? 'fichier identique'
+                            : 'image très ressemblante'}
+                        ) : {docMatches.data!.map((m) => m.nomApercu ?? 'compte').join(', ')}.
+                        Vérifiez avant de valider.
+                    </Text>
+                </View>
             )}
 
             {/* Anti-doublon : cette identité correspond-elle à un autre compte ? */}

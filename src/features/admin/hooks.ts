@@ -261,7 +261,7 @@ export interface IdentiteMatch {
     nomApercu: string | null;
     numeroApercu: string | null;
     createdAt: string;
-    motif: 'numero' | 'nom';
+    motif: 'numero' | 'nom' | 'image_exacte' | 'image_similaire';
 }
 
 export function useCheckIdentite() {
@@ -278,5 +278,23 @@ export function useCheckIdentite() {
             );
             return data.matches;
         },
+    });
+}
+
+/**
+ * Détection AUTOMATIQUE (sans saisie) : l'image de cette pièce d'identité
+ * correspond-elle à un document déjà soumis par un autre compte ?
+ */
+export function useCertificationDocMatches(certificationId: string, enabled: boolean) {
+    return useQuery({
+        queryKey: ['admin', 'fraud', 'doc-matches', certificationId],
+        queryFn: async () => {
+            const { data } = await api.get<{ matches: IdentiteMatch[] }>(
+                `/admin/fraud/identite/doc-matches/${certificationId}`,
+            );
+            return data.matches;
+        },
+        enabled,
+        staleTime: 60000,
     });
 }
