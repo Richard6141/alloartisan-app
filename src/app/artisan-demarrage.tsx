@@ -111,8 +111,11 @@ function DemarrageContent() {
     const preuvePrincipal = certs.find((c) => c.type === 'METIER' && c.metierId === principalId);
     const aDesPhotos = (portfolio?.total ?? 0) > 0;
 
-    // Une vitrine « soignée » = au moins une présentation et une photo de profil
-    const vitrineOk = !!(me?.photoProfilUrl && (me?.bio ?? '').trim().length > 0);
+    // Vitrine « faite » = photo de profil + au moins un métier (les seuls
+    // éléments réellement structurants). La présentation (bio), le slogan, les
+    // années d'expérience et l'IFU sont OPTIONNELS : ne pas les laisser bloquer
+    // l'étape à « à faire » quand l'artisan choisit de ne pas les remplir.
+    const vitrineOk = !!(me?.photoProfilUrl && (me?.metiers?.length ?? 0) > 0);
 
     const etapes: Etape[] = [
         {

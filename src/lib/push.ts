@@ -90,6 +90,18 @@ export async function unregisterForPush(): Promise<void> {
 }
 
 /**
+ * Réinitialise UNIQUEMENT le marqueur local du token FCM, sans appeler le
+ * serveur. À utiliser lors d'une déconnexion par EXPIRATION de session (logout
+ * silencieux) : on garde le token actif côté serveur, mais on force
+ * `registerForPush` à ré-enregistrer au prochain login. Sans ça, le garde
+ * `token === currentToken` court-circuite l'enregistrement et la nouvelle
+ * session n'a AUCUN token push → plus aucune notification n'arrive.
+ */
+export function resetPushRegistration(): void {
+    currentToken = null;
+}
+
+/**
  * Routage au TAP sur une notification (app en arrière-plan ou fermée).
  * S'appuie sur le champ `data` envoyé par le back (mêmes clés que le socket).
  */

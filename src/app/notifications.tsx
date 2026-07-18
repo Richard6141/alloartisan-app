@@ -38,6 +38,10 @@ function destinationFor(n: AppNotification): { pathname: string; params?: Record
     if (d.screen === 'justificatifs') return { pathname: '/justificatifs' };
     if (d.screen === 'activite') return { pathname: '/activite' };
     if (d.screen === 'express') return { pathname: '/express/opportunites' };
+    // Annonces de chantier (main-d'œuvre) : publication → liste des chantiers,
+    // manifestation d'intérêt → mes annonces (côté patron)
+    if (d.screen === 'main-doeuvre') return { pathname: '/annonces-chantier' };
+    if (d.screen === 'mes-annonces') return { pathname: '/mes-annonces' };
     if (typeof d.bookingId === 'string') {
         return { pathname: '/booking/[id]', params: { id: d.bookingId } };
     }

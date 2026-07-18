@@ -6,7 +6,7 @@ import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { api, setSessionExpiredHandler } from '../lib/api';
 import { tokenStorage, prefsStorage } from '../lib/storage';
 import { closeSockets } from '../lib/socket';
-import { unregisterForPush } from '../lib/push';
+import { unregisterForPush, resetPushRegistration } from '../lib/push';
 import { queryClient } from '../lib/queryClient';
 import type { AuthTokens, User } from '../types/api';
 
@@ -211,6 +211,12 @@ export const useAuth = create<AuthState>((set, get) => ({
             } catch {
                 // ignoré : la déconnexion locale prime
             }
+        } else {
+            // Déconnexion par EXPIRATION : on conserve le token FCM côté serveur
+            // mais on réinitialise le marqueur local pour FORCER un
+            // ré-enregistrement au prochain login — sinon les notifications ne
+            // reviennent jamais après reconnexion.
+            resetPushRegistration();
         }
         await tokenStorage.clear();
         closeSockets();
