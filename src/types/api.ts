@@ -10,6 +10,7 @@ export type StatutBooking =
     | 'CONTRE_OFFRE'
     | 'CONFIRMEE'
     | 'EN_COURS'
+    | 'ATTENTE_CONFIRMATION'
     | 'TERMINEE'
     | 'ANNULEE'
     | 'LITIGE';

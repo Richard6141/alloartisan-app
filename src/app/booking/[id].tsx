@@ -60,6 +60,12 @@ const STATUS_META: Record<
         tone: 'success',
         description: "L'intervention est en cours.",
     },
+    ATTENTE_CONFIRMATION: {
+        label: 'À confirmer',
+        tone: 'accent',
+        description:
+            "L'artisan a marqué l'intervention terminée. Confirmez la fin et notez votre artisan pour clôturer.",
+    },
     TERMINEE: {
         label: 'Terminée',
         tone: 'neutral',
@@ -77,7 +83,13 @@ const STATUS_META: Record<
     },
 };
 
-const TIMELINE_STEPS: StatutBooking[] = ['SOUMISE', 'ACCEPTEE', 'CONFIRMEE', 'EN_COURS', 'TERMINEE'];
+const TIMELINE_STEPS: StatutBooking[] = [
+    'SOUMISE',
+    'ACCEPTEE',
+    'CONFIRMEE',
+    'ATTENTE_CONFIRMATION',
+    'TERMINEE',
+];
 
 /** Descriptions vues par l'ARTISAN (le client a les siennes dans STATUS_META) */
 const ARTISAN_DESCRIPTIONS: Partial<Record<StatutBooking, string>> = {
@@ -89,6 +101,8 @@ const ARTISAN_DESCRIPTIONS: Partial<Record<StatutBooking, string>> = {
     CONFIRMEE:
         'Rendez-vous confirmé ! Activez « Je pars » pour que le client vous suive, ou marquez directement l’intervention terminée si c’est déjà fait.',
     EN_COURS: "Intervention en cours. Pensez à la clôturer une fois le travail terminé.",
+    ATTENTE_CONFIRMATION:
+        'Intervention marquée terminée. En attente de la confirmation du client, qui pourra ensuite vous noter.',
     TERMINEE: 'Mission terminée. Le client peut maintenant vous noter.',
 };
 
@@ -96,7 +110,7 @@ export default function BookingDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
     const { data: booking, isLoading, isError, refetch, isFetching } = useBooking(id);
-    const { confirm, cancel } = useBookingAction(id);
+    const { confirm, cancel, confirmCompletion } = useBookingAction(id);
     const startConversation = useStartConversation();
     const userId = useAuth((s) => s.user?.id);
     const roleIsArtisan = useAuth((s) => s.user?.role === 'ARTISAN');
@@ -145,6 +159,28 @@ export default function BookingDetailScreen() {
                     text: 'Confirmer',
                     onPress: () =>
                         confirm.mutate(undefined, {
+                            onError: (e) =>
+                                Alert.alert(
+                                    'Erreur',
+                                    e instanceof ApiError ? e.message : 'Réessayez.',
+                                ),
+                        }),
+                },
+            ],
+        );
+    };
+
+    // Le client confirme SANS noter (la notation reste possible ensuite).
+    const confirmerFinSansNoter = () => {
+        Alert.alert(
+            'Confirmer la fin',
+            "Confirmez-vous que l'intervention est bien terminée ? La mission sera clôturée. Vous pourrez noter l'artisan juste après.",
+            [
+                { text: 'Pas encore', style: 'cancel' },
+                {
+                    text: 'Oui, confirmer',
+                    onPress: () =>
+                        confirmCompletion.mutate(undefined, {
                             onError: (e) =>
                                 Alert.alert(
                                     'Erreur',
@@ -391,6 +427,31 @@ export default function BookingDetailScreen() {
                         </Text>
                     </Card>
 
+                    {/* Fin d'intervention à confirmer par le CLIENT (clôture à 2 temps) */}
+                    {!isArtisan && booking.statut === 'ATTENTE_CONFIRMATION' && (
+                        <>
+                            <Button
+                                title="✅ Confirmer la fin et noter l'artisan"
+                                variant="accent"
+                                size="lg"
+                                fullWidth
+                                onPress={() =>
+                                    router.push({
+                                        pathname: '/noter/[bookingId]',
+                                        params: { bookingId: booking.id, nom: nomArtisan },
+                                    })
+                                }
+                            />
+                            <Button
+                                title="Confirmer sans noter"
+                                variant="ghost"
+                                fullWidth
+                                loading={confirmCompletion.isPending}
+                                onPress={confirmerFinSansNoter}
+                            />
+                        </>
+                    )}
+
                     {/* Noter l'artisan — intervention terminée, pas encore notée (client) */}
                     {!isArtisan && booking.statut === 'TERMINEE' && !booking.avis && (
                         <Button
@@ -462,9 +523,7 @@ function ArtisanActionPanel({ booking }: { booking: Booking }) {
     const terminer = () => {
         Alert.alert(
             "Terminer l'intervention",
-            booking.statut === 'CONFIRMEE'
-                ? 'Le travail est terminé ? Pas besoin d’avoir cliqué « Je pars ». Le client pourra ensuite vous noter.'
-                : 'Le travail est terminé ? Le client pourra alors vous noter.',
+            'Le travail est terminé ? Le client recevra une demande de confirmation et pourra vous noter. La mission sera clôturée une fois qu’il aura confirmé.',
             [
                 { text: 'Pas encore', style: 'cancel' },
                 {
@@ -475,6 +534,10 @@ function ArtisanActionPanel({ booking }: { booking: Booking }) {
                                 await start.mutateAsync();
                             }
                             await complete.mutateAsync();
+                            Alert.alert(
+                                'Intervention terminée ✅',
+                                'Le client a été prévenu. Dès qu’il confirme, la mission est clôturée et il pourra vous noter.',
+                            );
                         } catch (e) {
                             showError(e);
                         }
@@ -533,6 +596,14 @@ function ArtisanActionPanel({ booking }: { booking: Booking }) {
                     onPress={terminer}
                 />
             )}
+
+            {booking.statut === 'ATTENTE_CONFIRMATION' && (
+                <View style={styles.awaitingBox}>
+                    <Text style={styles.awaitingText}>
+                        ⏳ Intervention marquée terminée. En attente de la confirmation du client.
+                    </Text>
+                </View>
+            )}
         </>
     );
 }
@@ -565,6 +636,20 @@ const styles = StyleSheet.create({
         fontFamily: typography.body,
         fontSize: fontSizes.sm,
         lineHeight: lineHeights.sm + 2,
+        color: colors.textSecondary,
+        textAlign: 'center',
+    },
+    awaitingBox: {
+        backgroundColor: colors.primarySoft,
+        borderRadius: 12,
+        padding: spacing.lg,
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    awaitingText: {
+        fontFamily: typography.body,
+        fontSize: fontSizes.sm,
+        lineHeight: lineHeights.sm,
         color: colors.textSecondary,
         textAlign: 'center',
     },

@@ -18,6 +18,7 @@ const STATUS_LABELS: Record<StatutBooking, { label: string; tone: 'primary' | 's
     CONTRE_OFFRE: { label: 'Négociation', tone: 'accent' },
     CONFIRMEE: { label: 'Confirmée', tone: 'primary' },
     EN_COURS: { label: 'En cours', tone: 'success' },
+    ATTENTE_CONFIRMATION: { label: 'À confirmer', tone: 'accent' },
     TERMINEE: { label: 'Terminée', tone: 'neutral' },
     ANNULEE: { label: 'Annulée', tone: 'danger' },
     LITIGE: { label: 'Litige', tone: 'danger' },
@@ -204,22 +205,29 @@ function BookingCard({ booking, isArtisan }: { booking: Booking; isArtisan: bool
         </Pressable>
     );
 
-    // Client : inviter à noter l'artisan sur une mission terminée (chemin clair)
-    const noterCTA =
-        !isArtisan && booking.statut === 'TERMINEE' && !booking.avis ? (
-            <Pressable
-                onPress={() =>
-                    router.push({
-                        pathname: '/noter/[bookingId]',
-                        params: { bookingId: booking.id, nom: interlocuteur },
-                    })
-                }
-                style={styles.noterBtn}
-                accessibilityRole="button"
-            >
-                <Text style={styles.noterTxt}>⭐ Noter l'artisan</Text>
-            </Pressable>
-        ) : null;
+    // Client : chemin clair pour clôturer / noter selon le statut.
+    // - ATTENTE_CONFIRMATION : confirmer la fin + noter
+    // - TERMINEE sans avis : noter l'artisan
+    const ctaLabel =
+        !isArtisan && booking.statut === 'ATTENTE_CONFIRMATION'
+            ? '✅ Confirmer la fin et noter'
+            : !isArtisan && booking.statut === 'TERMINEE' && !booking.avis
+              ? "⭐ Noter l'artisan"
+              : null;
+    const noterCTA = ctaLabel ? (
+        <Pressable
+            onPress={() =>
+                router.push({
+                    pathname: '/noter/[bookingId]',
+                    params: { bookingId: booking.id, nom: interlocuteur },
+                })
+            }
+            style={styles.noterBtn}
+            accessibilityRole="button"
+        >
+            <Text style={styles.noterTxt}>{ctaLabel}</Text>
+        </Pressable>
+    ) : null;
 
     if (!noterCTA) return card;
     return (

@@ -82,7 +82,18 @@ export function useBookingAction(bookingId: string) {
         onSuccess: invalidate,
     });
 
-    return { confirm, cancel };
+    // Le client confirme la fin de l'intervention → statut TERMINEE.
+    const confirmCompletion = useMutation({
+        mutationFn: async () => {
+            const { data } = await api.patch<Booking>(
+                `/bookings/${bookingId}/confirm-completion`,
+            );
+            return data;
+        },
+        onSuccess: invalidate,
+    });
+
+    return { confirm, cancel, confirmCompletion };
 }
 
 /** Actions de l'ARTISAN sur une demande */
