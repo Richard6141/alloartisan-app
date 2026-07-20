@@ -96,13 +96,20 @@ export default function LoginScreen() {
                             textContentType="password"
                             value={password}
                             onChangeText={setPassword}
-                            error={error ?? undefined}
                             leftIcon={<Lock size={18} color={colors.textSecondary} strokeWidth={2} />}
                         />
 
                         <Link href="/(auth)/mot-de-passe-oublie" style={styles.forgotLink}>
                             Mot de passe oublié ?
                         </Link>
+
+                        {/* Erreur générale du formulaire — jamais rattachée au champ
+                            mot de passe (ne pas indiquer lequel des identifiants est en cause). */}
+                        {error ? (
+                            <View style={styles.errorBox}>
+                                <Text style={styles.errorText}>{error}</Text>
+                            </View>
+                        ) : null}
 
                         <Button
                             title="Se connecter"
@@ -181,6 +188,18 @@ const styles = StyleSheet.create({
         color: colors.primary,
         alignSelf: 'flex-end',
         marginTop: -spacing.md,
+    },
+    errorBox: {
+        backgroundColor: colors.dangerSoft,
+        borderRadius: 10,
+        paddingVertical: spacing.sm,
+        paddingHorizontal: spacing.md,
+    },
+    errorText: {
+        fontFamily: typography.body,
+        fontSize: fontSizes.sm,
+        color: colors.danger,
+        textAlign: 'center',
     },
     footer: {
         flexDirection: 'row',
