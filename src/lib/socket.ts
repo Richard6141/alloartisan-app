@@ -48,6 +48,22 @@ export async function getSocket(namespace: Namespace): Promise<Socket> {
     return socket;
 }
 
+/**
+ * Force une reconnexion propre de tous les sockets ouverts, avec un token FRAIS.
+ * À appeler au retour au premier plan : après un long arrière-plan, le socket
+ * peut sembler « connecté » alors que le transport est mort (l'OS l'a coupé) —
+ * socket.io ne le détecte qu'au timeout de ping. On relance donc le handshake
+ * pour que les notifications temps réel reprennent immédiatement.
+ */
+export async function reconnectSockets(): Promise<void> {
+    if (sockets.size === 0) return;
+    await ensureFreshAccessToken().catch(() => null);
+    for (const socket of sockets.values()) {
+        socket.disconnect();
+        socket.connect();
+    }
+}
+
 /** Ferme tous les sockets (déconnexion utilisateur) */
 export function closeSockets(): void {
     for (const socket of sockets.values()) {

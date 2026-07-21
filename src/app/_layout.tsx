@@ -14,6 +14,8 @@ import {
 } from '@expo-google-fonts/plus-jakarta-sans';
 import { AppState, BackHandler, View, StyleSheet } from 'react-native';
 import { queryClient, asyncStoragePersister, setupOnlineManagement } from '../lib/queryClient';
+import { ensureFreshAccessToken } from '../lib/api';
+import { reconnectSockets } from '../lib/socket';
 import { prefsStorage } from '../lib/storage';
 import { isLockSuppressed, clearLockSuppression } from '../lib/lockGuard';
 import {
@@ -87,6 +89,17 @@ export default function RootLayout() {
             } else if (state === 'active') {
                 // La suspension ne vaut que pour UN aller-retour
                 clearLockSuppression();
+                // Retour au premier plan : après un long arrière-plan (token
+                // d'accès expiré, socket coupé par l'OS), on rafraîchit le token
+                // PUIS on relance les sockets — pour que données ET notifications
+                // temps réel reprennent immédiatement, sans action de l'utilisateur.
+                if (useAuth.getState().status === 'authenticated') {
+                    void ensureFreshAccessToken()
+                        .catch(() => null)
+                        .finally(() => {
+                            void reconnectSockets();
+                        });
+                }
             }
         });
         return () => sub.remove();
