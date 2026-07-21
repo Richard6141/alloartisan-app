@@ -78,6 +78,26 @@ export async function registerForPush(): Promise<void> {
     }
 }
 
+/**
+ * Écoute la ROTATION du token FCM. Firebase renouvelle périodiquement le token
+ * d'un appareil (mise à jour de l'app, effacement des données, réinstallation
+ * de Play Services…). Sans cette écoute, le back-end continue de pousser vers
+ * l'ANCIEN token → FCM répond « registration-token-not-registered » → plus
+ * aucune notification n'arrive quand l'app est fermée. On met donc le serveur à
+ * jour DÈS que le token change. À brancher une fois au démarrage.
+ */
+export function setupPushTokenRotation(): () => void {
+    const sub = Notifications.addPushTokenListener((devToken) => {
+        const token = String(devToken.data);
+        if (!token || token === currentToken) return;
+        currentToken = token;
+        const deviceName =
+            [Device.manufacturer, Device.modelName].filter(Boolean).join(' ') || Platform.OS;
+        void api.post('/notifications/fcm-token', { token, deviceName }).catch(() => undefined);
+    });
+    return () => sub.remove();
+}
+
 /** À la déconnexion : désactiver le token pour ne plus rien recevoir. */
 export async function unregisterForPush(): Promise<void> {
     if (!currentToken) return;

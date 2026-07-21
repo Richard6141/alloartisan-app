@@ -20,6 +20,7 @@ import { prefsStorage } from '../lib/storage';
 import { isLockSuppressed, clearLockSuppression } from '../lib/lockGuard';
 import {
     registerForPush,
+    setupPushTokenRotation,
     useNotificationTapRouting,
     consumeInitialNotification,
 } from '../lib/push';
@@ -99,6 +100,10 @@ export default function RootLayout() {
                         .finally(() => {
                             void reconnectSockets();
                         });
+                    // Le token FCM a pu tourner pendant l'arrière-plan (MAJ Play
+                    // Services…). On ré-enregistre pour que le serveur pousse
+                    // toujours vers le BON token, même app restée fermée.
+                    void registerForPush();
                 }
             }
         });
@@ -110,6 +115,12 @@ export default function RootLayout() {
     useEffect(() => {
         if (status === 'authenticated') void registerForPush();
     }, [status]);
+
+    // Rotation du token FCM : Firebase renouvelle le token sans prévenir. On
+    // écoute ce changement pour mettre le serveur à jour immédiatement — sinon
+    // il continue de pousser vers un token mort et l'utilisateur ne reçoit plus
+    // rien, app fermée comprise. Branché une seule fois pour toute la session.
+    useEffect(() => setupPushTokenRotation(), []);
 
     // Tap sur une notification (app ouverte / en arrière-plan) → écran concerné
     useEffect(() => useNotificationTapRouting(router), [router]);
