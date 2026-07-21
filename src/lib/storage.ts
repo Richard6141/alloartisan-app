@@ -11,6 +11,7 @@ const ACCESS_TOKEN = 'aa_access_token';
 const REFRESH_TOKEN = 'aa_refresh_token';
 const ONBOARDING_SEEN = 'aa_onboarding_seen';
 const BIOMETRIC_LOCK = 'aa_biometric_lock';
+const BG_PROMPT_SEEN = 'aa_bg_prompt_seen';
 
 export const tokenStorage = {
     async getAccessToken(): Promise<string | null> {
@@ -46,5 +47,12 @@ export const prefsStorage = {
     },
     async setBiometricLock(enabled: boolean): Promise<void> {
         await AsyncStorage.setItem(BIOMETRIC_LOCK, enabled ? '1' : '0');
+    },
+    /** Invite « réception en arrière-plan » (exemption batterie) déjà proposée ? */
+    async hasSeenBackgroundPrompt(): Promise<boolean> {
+        return (await AsyncStorage.getItem(BG_PROMPT_SEEN)) === '1';
+    },
+    async markBackgroundPromptSeen(): Promise<void> {
+        await AsyncStorage.setItem(BG_PROMPT_SEEN, '1');
     },
 };

@@ -21,6 +21,7 @@ import {
     MapPin,
     Fingerprint,
     ShieldCheck,
+    BellRing,
     Trash2,
 } from 'lucide-react-native';
 import { api, ApiError } from '../lib/api';
@@ -167,6 +168,24 @@ function SettingsForm() {
                                 {user?.mfaEnabled
                                     ? 'Activée · un code est demandé à la connexion'
                                     : 'Ajoutez un code de sécurité à la connexion'}
+                            </Text>
+                        </View>
+                        <ChevronRight size={17} color={colors.textMuted} strokeWidth={2.2} />
+                    </Card>
+                </Pressable>
+
+                <Text style={styles.sectionLabel}>Notifications</Text>
+                <Pressable
+                    onPress={() => router.push('/reception-arriere-plan')}
+                    accessibilityRole="button"
+                    accessibilityLabel="Notifications en arrière-plan"
+                >
+                    <Card style={styles.mfaCard}>
+                        <BellRing size={20} color={colors.primary} strokeWidth={2} />
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.bioTitle}>Recevoir même app fermée</Text>
+                            <Text style={styles.bioText}>
+                                Autoriser l'arrière-plan pour ne manquer aucun message ni réservation
                             </Text>
                         </View>
                         <ChevronRight size={17} color={colors.textMuted} strokeWidth={2.2} />

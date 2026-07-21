@@ -30,6 +30,7 @@ import { OfflineBanner } from '../components/ui';
 import { LockScreen } from '../components/LockScreen';
 import { AnimatedSplash } from '../components/AnimatedSplash';
 import { RealtimeBridge } from '../components/RealtimeBridge';
+import { BackgroundReceptionPrompt } from '../components/BackgroundReceptionPrompt';
 import { colors } from '../theme/tokens';
 
 void SplashScreen.preventAutoHideAsync();
@@ -151,6 +152,7 @@ export default function RootLayout() {
                 <StatusBar style="dark" />
                 <OfflineBanner />
                 <RealtimeBridge />
+                <BackgroundReceptionPrompt />
                 <Stack
                     screenOptions={{
                         headerShown: false,
