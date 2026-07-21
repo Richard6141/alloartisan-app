@@ -167,6 +167,12 @@ export const useAuth = create<AuthState>((set, get) => ({
             ?.googleWebClientId;
         GoogleSignin.configure({ webClientId, offlineAccess: false });
         await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+        // Forcer le SÉLECTEUR de compte : sans ça, le SDK natif garde le dernier
+        // compte Google connecté et le réutilise silencieusement (impossible d'en
+        // changer, ni de créer un nouveau compte). On oublie donc la session
+        // Google locale avant de relancer le choix. Best-effort : si aucun compte
+        // n'était connecté, signOut ne fait rien.
+        await GoogleSignin.signOut().catch(() => undefined);
         const res = (await GoogleSignin.signIn()) as {
             idToken?: string;
             data?: { idToken?: string };
