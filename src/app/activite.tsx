@@ -8,7 +8,7 @@ import {
     TrendingUp,
     TrendingDown,
     Star,
-    Wallet,
+    Inbox,
     CalendarDays,
     Gauge,
     ChevronRight,
@@ -127,6 +127,11 @@ function ActivityContent() {
     const enCours =
         (stats?.parStatut?.CONFIRMEE ?? 0) + (stats?.parStatut?.EN_COURS ?? 0);
     const terminees = stats?.parStatut?.TERMINEE ?? 0;
+    // Traction cumulée : toutes les demandes reçues depuis l'inscription (tous
+    // statuts confondus). C'est le cœur de la valeur AlloArtisan pour l'artisan
+    // (des mises en relation), là où l'ancien « revenus payés en ligne » ne
+    // voulait plus rien dire depuis le passage au modèle par abonnement.
+    const totalDemandes = Object.values(stats?.parStatut ?? {}).reduce((a, b) => a + b, 0);
     const evolutionPositive = (stats?.evolution ?? 0) >= 0;
 
     return (
@@ -196,15 +201,15 @@ function ActivityContent() {
                 />
             </Card>
 
-            {/* Revenus */}
-            <Card style={styles.revenueCard}>
-                <View style={styles.revenueIcon}>
-                    <Wallet size={20} color="#047857" strokeWidth={2} />
+            {/* Traction : demandes reçues au total (mises en relation apportées) */}
+            <Card style={styles.heroCard}>
+                <View style={styles.heroIcon}>
+                    <Inbox size={20} color={colors.primary} strokeWidth={2} />
                 </View>
                 <View style={{ flex: 1 }}>
-                    <Text style={styles.revenueLabel}>Revenus totaux (payés en ligne)</Text>
-                    <Text style={styles.revenueValue}>
-                        {Number(stats?.revenuTotal ?? 0).toLocaleString('fr-FR')} FCFA
+                    <Text style={styles.heroLabel}>Demandes reçues au total</Text>
+                    <Text style={styles.heroValue}>
+                        {totalDemandes.toLocaleString('fr-FR')}
                     </Text>
                 </View>
             </Card>
@@ -479,31 +484,31 @@ const styles = StyleSheet.create({
         color: colors.textSecondary,
         marginTop: 1,
     },
-    revenueCard: {
+    heroCard: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.md,
-        backgroundColor: '#F0FDF4',
+        backgroundColor: colors.primarySoft,
         borderWidth: 1,
-        borderColor: '#BBF7D0',
+        borderColor: colors.border,
     },
-    revenueIcon: {
+    heroIcon: {
         width: 42,
         height: 42,
         borderRadius: radii.full,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: colors.surface,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    revenueLabel: {
+    heroLabel: {
         fontFamily: typography.body,
         fontSize: fontSizes.xs,
         color: colors.textSecondary,
     },
-    revenueValue: {
+    heroValue: {
         fontFamily: typography.heading,
         fontSize: fontSizes.xl,
-        color: '#047857',
+        color: colors.primary,
         letterSpacing: -0.4,
         marginTop: 1,
     },
