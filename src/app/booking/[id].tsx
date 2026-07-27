@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
-import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import { useLocalSearchParams, useRouter, Stack, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
     ArrowLeft,
@@ -110,6 +110,17 @@ export default function BookingDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
     const { data: booking, isLoading, isError, refetch, isFetching } = useBooking(id);
+    // Filet de sécurité : recharger le booking dès que l'écran reprend le focus
+    // (retour depuis un autre écran, réveil de l'app). Garantit qu'on ne reste
+    // JAMAIS sur un statut périmé — ex. l'artisan a clôturé mais le temps réel
+    // n'a pas pu passer (socket coupé / push non reçu sur certains téléphones) :
+    // à la simple ouverture de la mission, le bon statut (et le bouton confirmer)
+    // apparaît.
+    useFocusEffect(
+        useCallback(() => {
+            void refetch();
+        }, [refetch]),
+    );
     const { confirm, cancel, confirmCompletion } = useBookingAction(id);
     const startConversation = useStartConversation();
     const userId = useAuth((s) => s.user?.id);

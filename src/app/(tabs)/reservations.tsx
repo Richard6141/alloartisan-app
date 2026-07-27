@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import { CalendarX2, CalendarDays, MapPin, Zap } from 'lucide-react-native';
@@ -42,9 +42,17 @@ export default function ReservationsScreen() {
 }
 
 function BookingsList() {
-    const { data, isLoading, error } = useBookings();
+    const { data, isLoading, error, refetch } = useBookings();
     const isArtisan = useAuth((s) => s.user?.role === 'ARTISAN');
     const userId = useAuth((s) => s.user?.id);
+
+    // Recharger la liste dès qu'on revient dessus : les statuts changés par
+    // l'autre partie (ex. « à confirmer ») apparaissent sans attendre.
+    useFocusEffect(
+        useCallback(() => {
+            void refetch();
+        }, [refetch]),
+    );
 
     // Artisan inscrit mais profil métier pas encore créé → onboarding
     if (isArtisan && error) {

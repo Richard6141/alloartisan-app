@@ -24,8 +24,10 @@ export function useBooking(id: string) {
             const { data } = await api.get<Booking>(`/bookings/${id}`);
             return data;
         },
-        // Statuts qui bougent : rafraîchir régulièrement quand l'écran est ouvert
-        refetchInterval: 20000,
+        // Statuts qui bougent (en cours → à confirmer → terminée) : rafraîchir
+        // souvent quand l'écran est ouvert, pour qu'un changement fait par
+        // l'autre partie apparaisse vite même sans temps réel.
+        refetchInterval: 10000,
     });
 }
 
