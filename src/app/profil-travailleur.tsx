@@ -18,7 +18,7 @@ import {
     useMonProfilTravailleur,
     useUpsertProfilTravailleur,
 } from '../features/travailleurs/hooks';
-import { resolveCoords } from '../lib/geo';
+import { resolveCoords, resolvePosition } from '../lib/geo';
 import { api, ApiError } from '../lib/api';
 import { queryKeys } from '../lib/queryClient';
 import type { Metier } from '../types/api';
@@ -57,7 +57,9 @@ export default function ProfilTravailleurScreen() {
 
     const useMyPosition = async () => {
         setLocating(true);
-        const pos = await resolveCoords();
+        // resolvePosition (et non resolveCoords) : géocode inverse la position
+        // pour remplir aussi la ville principale, sinon le champ reste vide.
+        const pos = await resolvePosition();
         setLocating(false);
         if (!pos) {
             Alert.alert(
@@ -67,6 +69,7 @@ export default function ProfilTravailleurScreen() {
             return;
         }
         setCoords({ latitude: pos.latitude, longitude: pos.longitude });
+        if (pos.ville) setVille(pos.ville);
     };
 
     // Pré-remplir si un profil existe déjà

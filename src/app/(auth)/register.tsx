@@ -15,17 +15,10 @@ import { GoogleButton } from '../../components/GoogleButton';
 import { BrandLogo } from '../../components/BrandLogo';
 import { useAuth } from '../../stores/auth';
 import { ApiError } from '../../lib/api';
+import { validatePassword } from '../../lib/validation';
 import { colors, spacing, typography, fontSizes, lineHeights, radii } from '../../theme/tokens';
 
 type Role = 'CLIENT' | 'ARTISAN';
-
-function validatePassword(pwd: string): string | null {
-    if (pwd.length < 8) return 'Au moins 8 caractères';
-    if (!/[A-Z]/.test(pwd)) return 'Au moins une majuscule';
-    if (!/[0-9]/.test(pwd)) return 'Au moins un chiffre';
-    if (!/[^A-Za-z0-9]/.test(pwd)) return 'Au moins un caractère spécial (!, @, #…)';
-    return null;
-}
 
 export default function RegisterScreen() {
     const router = useRouter();

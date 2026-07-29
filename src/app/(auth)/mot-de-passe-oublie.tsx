@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Mail, KeyRound, Lock } from 'lucide-react-native';
 import { api, ApiError } from '../../lib/api';
 import { Button, Input } from '../../components/ui';
+import { validatePassword } from '../../lib/validation';
 import { colors, spacing, typography, fontSizes, lineHeights, radii } from '../../theme/tokens';
 
 /**
@@ -27,6 +28,7 @@ export default function MotDePasseOublieScreen() {
     const [email, setEmail] = useState('');
     const [code, setCode] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
@@ -52,8 +54,13 @@ export default function MotDePasseOublieScreen() {
             setError('Saisissez le code reçu par email');
             return;
         }
-        if (password.length < 8) {
-            setError('Le nouveau mot de passe doit contenir au moins 8 caractères');
+        const pwdIssue = validatePassword(password);
+        if (pwdIssue) {
+            setError(`Mot de passe : ${pwdIssue.toLowerCase()}`);
+            return;
+        }
+        if (confirmPassword !== password) {
+            setError('Les deux mots de passe ne correspondent pas');
             return;
         }
         setError(null);
@@ -162,8 +169,19 @@ export default function MotDePasseOublieScreen() {
                                 autoComplete="new-password"
                                 value={password}
                                 onChangeText={setPassword}
+                                helper="8 caractères min., une majuscule, une minuscule, un chiffre, un caractère spécial"
+                                leftIcon={
+                                    <Lock size={18} color={colors.textSecondary} strokeWidth={2} />
+                                }
+                            />
+                            <Input
+                                label="Confirmer le mot de passe"
+                                placeholder="••••••••"
+                                secureTextEntry
+                                autoComplete="new-password"
+                                value={confirmPassword}
+                                onChangeText={setConfirmPassword}
                                 error={error ?? undefined}
-                                helper="8 caractères min., une majuscule, un chiffre, un caractère spécial"
                                 leftIcon={
                                     <Lock size={18} color={colors.textSecondary} strokeWidth={2} />
                                 }
